@@ -22,9 +22,10 @@ examples mentioned below).
 The RED queue disc does not require packet filters, does not admit
 child queue discs and uses a single internal queue. If not provided by
 the user, a DropTail queue operating in the same mode (packet or byte)
-as the queue disc and having a size equal to the RED MaxSize attribute
-is created. Otherwise, the capacity of the queue disc is determined by
-the capacity of the internal queue provided by the user.
+as the queue disc and having a size equal to the RED QueueLimit attribute
+is created. If the user provides an internal queue, such a queue must
+operate in the same mode as the queue disc and have a size not less than
+the RED QueueLimit attribute.
 
 Adaptive Random Early Detection (ARED)
 ======================================
@@ -90,12 +91,13 @@ Attributes
 The RED queue contains a number of attributes that control the RED
 policies:
 
-* MaxSize
+* Mode (bytes or packets)
 * MeanPktSize
 * IdlePktSize
 * Wait (time)
 * Gentle mode
 * MinTh, MaxTh
+* QueueLimit
 * Queue weight
 * LInterm
 * LinkBandwidth
@@ -138,7 +140,7 @@ as done in ``src/traffic-control/examples/adaptive-red-tests.cc``:
 
 .. sourcecode:: cpp
 
-  Config::SetDefault("ns3::RedQueueDisc::ARED", BooleanValue(true));
+  Config::SetDefault ("ns3::RedQueueDisc::ARED", BooleanValue (true));
 
 Setting ARED to true implicitly configures both: (i) automatic setting
 of Queue weight, MinTh and MaxTh and (ii) adapting m_curMaxP.
@@ -151,16 +153,16 @@ as done in ``src/traffic-control/examples/adaptive-red-tests.cc``:
 
 .. sourcecode:: cpp
 
-  Config::SetDefault("ns3::RedQueueDisc::QW", DoubleValue(0.0));
-  Config::SetDefault("ns3::RedQueueDisc::MinTh", DoubleValue(0));
-  Config::SetDefault("ns3::RedQueueDisc::MaxTh", DoubleValue(0));
+  Config::SetDefault ("ns3::RedQueueDisc::QW", DoubleValue (0.0));
+  Config::SetDefault ("ns3::RedQueueDisc::MinTh", DoubleValue (0));
+  Config::SetDefault ("ns3::RedQueueDisc::MaxTh", DoubleValue (0));
 
 To configure (ii); AdaptMaxP must be set to true, as done in
 ``src/traffic-control/examples/adaptive-red-tests.cc``:
 
 .. sourcecode:: cpp
 
-  Config::SetDefault("ns3::RedQueueDisc::AdaptMaxP", BooleanValue(true));
+  Config::SetDefault ("ns3::RedQueueDisc::AdaptMaxP", BooleanValue (true));
 
 Simulating Feng's Adaptive RED
 ==============================
@@ -170,7 +172,7 @@ set to true, as done in ``examples/traffic-control/red-vs-fengadaptive.cc``:
 
 .. sourcecode:: cpp
 
-  Config::SetDefault("ns3::RedQueueDisc::FengAdaptive", BooleanValue(true));
+  Config::SetDefault ("ns3::RedQueueDisc::FengAdaptive", BooleanValue (true));
 
 Simulating NLRED
 ================
@@ -180,7 +182,7 @@ as shown below:
 
 .. sourcecode:: cpp
 
-  Config::SetDefault("ns3::RedQueueDisc::NLRED", BooleanValue(true));
+  Config::SetDefault ("ns3::RedQueueDisc::NLRED", BooleanValue (true));
 
 Examples
 ========
@@ -188,7 +190,7 @@ Examples
 The RED queue example is found at ``src/traffic-control/examples/red-tests.cc``.
 
 ARED queue examples can be found at:
-``src/traffic-control/examples/adaptive-red-tests.cc`` and
+``src/traffic-control/examples/adaptive-red-tests.cc`` and 
 ``src/traffic-control/examples/red-vs-ared.cc``
 
 Feng's Adaptive RED example can be found at:
@@ -201,4 +203,4 @@ Validation
 **********
 
 The RED model has been validated and the report is currently stored
-at: https://gitlab.com/nsnam/ns-3-dev/uploads/6937dac2431a0b61209728ecbfd442ac/report-red-ns3.pdf
+at: https://github.com/downloads/talau/ns-3-tcp-red/report-red-ns3.pdf 

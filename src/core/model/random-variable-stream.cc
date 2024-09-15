@@ -1,8 +1,20 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2006 Georgia Tech Research Corporation
  * Copyright (c) 2011 Mathieu Lacage
  *
- * SPDX-License-Identifier: GPL-2.0-only
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Authors: Rajib Bhattacharjea<raj.b@gatech.edu>
  *          Hadi Arbabi<marbabi@cs.odu.edu>
@@ -12,22 +24,18 @@
  *
  */
 #include "random-variable-stream.h"
-
 #include "assert.h"
 #include "boolean.h"
 #include "double.h"
 #include "integer.h"
-#include "log.h"
-#include "pointer.h"
-#include "rng-seed-manager.h"
-#include "rng-stream.h"
 #include "string.h"
-#include "uinteger.h"
-
-#include <algorithm> // upper_bound
+#include "pointer.h"
+#include "log.h"
+#include "rng-stream.h"
+#include "rng-seed-manager.h"
+#include "unused.h"
 #include <cmath>
 #include <iostream>
-#include <numbers>
 
 /**
  * \file
@@ -35,792 +43,780 @@
  * ns3::RandomVariableStream and related implementations
  */
 
-namespace ns3
+namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("RandomVariableStream");
+
+NS_OBJECT_ENSURE_REGISTERED (RandomVariableStream);
+
+TypeId 
+RandomVariableStream::GetTypeId (void)
 {
-
-NS_LOG_COMPONENT_DEFINE("RandomVariableStream");
-
-NS_OBJECT_ENSURE_REGISTERED(RandomVariableStream);
-
-TypeId
-RandomVariableStream::GetTypeId()
-{
-    static TypeId tid = TypeId("ns3::RandomVariableStream")
-                            .SetParent<Object>()
-                            .SetGroupName("Core")
-                            .AddAttribute("Stream",
-                                          "The stream number for this RNG stream. -1 means "
-                                          "\"allocate a stream automatically\". "
-                                          "Note that if -1 is set, Get will return -1 so that it "
-                                          "is not possible to know which "
-                                          "value was automatically allocated.",
-                                          IntegerValue(-1),
-                                          MakeIntegerAccessor(&RandomVariableStream::SetStream,
-                                                              &RandomVariableStream::GetStream),
-                                          MakeIntegerChecker<int64_t>())
-                            .AddAttribute("Antithetic",
-                                          "Set this RNG stream to generate antithetic values",
-                                          BooleanValue(false),
-                                          MakeBooleanAccessor(&RandomVariableStream::SetAntithetic,
-                                                              &RandomVariableStream::IsAntithetic),
-                                          MakeBooleanChecker());
-    return tid;
+  static TypeId tid = TypeId ("ns3::RandomVariableStream")
+    .SetParent<Object> ()
+    .SetGroupName ("Core")
+    .AddAttribute("Stream",
+		  "The stream number for this RNG stream. -1 means \"allocate a stream automatically\". "
+		  "Note that if -1 is set, Get will return -1 so that it is not possible to know which "
+		  "value was automatically allocated.",
+		  IntegerValue(-1),
+		  MakeIntegerAccessor(&RandomVariableStream::SetStream,
+				      &RandomVariableStream::GetStream),
+		  MakeIntegerChecker<int64_t>())
+    .AddAttribute("Antithetic", "Set this RNG stream to generate antithetic values",
+		  BooleanValue (false),
+		  MakeBooleanAccessor(&RandomVariableStream::SetAntithetic,
+				      &RandomVariableStream::IsAntithetic),
+		  MakeBooleanChecker())
+    ;
+  return tid;
 }
 
 RandomVariableStream::RandomVariableStream()
-    : m_rng(nullptr)
+  : m_rng (0)
 {
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
 }
-
 RandomVariableStream::~RandomVariableStream()
 {
-    delete m_rng;
+  NS_LOG_FUNCTION (this);
+  delete m_rng;
 }
 
 void
 RandomVariableStream::SetAntithetic(bool isAntithetic)
 {
-    NS_LOG_FUNCTION(this << isAntithetic);
-    m_isAntithetic = isAntithetic;
+  NS_LOG_FUNCTION (this << isAntithetic);
+  m_isAntithetic = isAntithetic;
 }
-
 bool
-RandomVariableStream::IsAntithetic() const
+RandomVariableStream::IsAntithetic(void) const
 {
-    return m_isAntithetic;
+  NS_LOG_FUNCTION (this);
+  return m_isAntithetic;
 }
-
-uint32_t
-RandomVariableStream::GetInteger()
-{
-    auto value = static_cast<uint32_t>(GetValue());
-    NS_LOG_DEBUG(GetInstanceTypeId().GetName()
-                 << " integer value: " << value << " stream: " << GetStream());
-    return value;
-}
-
 void
-RandomVariableStream::SetStream(int64_t stream)
+RandomVariableStream::SetStream (int64_t stream)
 {
-    NS_LOG_FUNCTION(this << stream);
-    // negative values are not legal.
-    NS_ASSERT(stream >= -1);
-    delete m_rng;
-    if (stream == -1)
+  NS_LOG_FUNCTION (this << stream);
+  // negative values are not legal.
+  NS_ASSERT (stream >= -1);
+  delete m_rng;
+  if (stream == -1)
     {
-        // The first 2^63 streams are reserved for automatic stream
-        // number assignment.
-        uint64_t nextStream = RngSeedManager::GetNextStreamIndex();
-        NS_ASSERT(nextStream <= ((1ULL) << 63));
-        NS_LOG_INFO(GetInstanceTypeId().GetName() << " automatic stream: " << nextStream);
-        m_rng = new RngStream(RngSeedManager::GetSeed(), nextStream, RngSeedManager::GetRun());
+      // The first 2^63 streams are reserved for automatic stream
+      // number assignment.
+      uint64_t nextStream = RngSeedManager::GetNextStreamIndex ();
+      NS_ASSERT(nextStream <= ((1ULL)<<63));
+      m_rng = new RngStream (RngSeedManager::GetSeed (),
+                             nextStream,
+                             RngSeedManager::GetRun ());
     }
-    else
+  else
     {
-        // The last 2^63 streams are reserved for deterministic stream
-        // number assignment.
-        uint64_t base = ((1ULL) << 63);
-        uint64_t target = base + stream;
-        NS_LOG_INFO(GetInstanceTypeId().GetName() << " configured stream: " << stream);
-        m_rng = new RngStream(RngSeedManager::GetSeed(), target, RngSeedManager::GetRun());
+      // The last 2^63 streams are reserved for deterministic stream
+      // number assignment.
+      uint64_t base = ((1ULL)<<63);
+      uint64_t target = base + stream;
+      m_rng = new RngStream (RngSeedManager::GetSeed (),
+                             target,
+                             RngSeedManager::GetRun ());
     }
-    m_stream = stream;
+  m_stream = stream;
 }
-
 int64_t
-RandomVariableStream::GetStream() const
+RandomVariableStream::GetStream(void) const
 {
-    return m_stream;
+  NS_LOG_FUNCTION (this);
+  return m_stream;
 }
 
-RngStream*
-RandomVariableStream::Peek() const
+RngStream *
+RandomVariableStream::Peek(void) const
 {
-    return m_rng;
+  NS_LOG_FUNCTION (this);
+  return m_rng;
 }
 
 NS_OBJECT_ENSURE_REGISTERED(UniformRandomVariable);
 
-TypeId
-UniformRandomVariable::GetTypeId()
+TypeId 
+UniformRandomVariable::GetTypeId (void)
 {
-    static TypeId tid =
-        TypeId("ns3::UniformRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<UniformRandomVariable>()
-            .AddAttribute("Min",
-                          "The lower bound on the values returned by this RNG stream.",
-                          DoubleValue(0),
-                          MakeDoubleAccessor(&UniformRandomVariable::m_min),
-                          MakeDoubleChecker<double>())
-            .AddAttribute("Max",
-                          "The upper bound on the values returned by this RNG stream.",
-                          DoubleValue(1.0),
-                          MakeDoubleAccessor(&UniformRandomVariable::m_max),
-                          MakeDoubleChecker<double>());
-    return tid;
+  static TypeId tid = TypeId ("ns3::UniformRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<UniformRandomVariable> ()
+    .AddAttribute("Min", "The lower bound on the values returned by this RNG stream.",
+		  DoubleValue(0),
+		  MakeDoubleAccessor(&UniformRandomVariable::m_min),
+		  MakeDoubleChecker<double>())
+    .AddAttribute("Max", "The upper bound on the values returned by this RNG stream.",
+		  DoubleValue(1.0),
+		  MakeDoubleAccessor(&UniformRandomVariable::m_max),
+		  MakeDoubleChecker<double>())
+    ;
+  return tid;
+}
+UniformRandomVariable::UniformRandomVariable ()
+{
+  // m_min and m_max are initialized after constructor by attributes
+  NS_LOG_FUNCTION (this);
 }
 
-UniformRandomVariable::UniformRandomVariable()
+double 
+UniformRandomVariable::GetMin (void) const
 {
-    // m_min and m_max are initialized after constructor by attributes
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
+  return m_min;
+}
+double 
+UniformRandomVariable::GetMax (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_max;
 }
 
-double
-UniformRandomVariable::GetMin() const
+double 
+UniformRandomVariable::GetValue (double min, double max)
 {
-    return m_min;
-}
-
-double
-UniformRandomVariable::GetMax() const
-{
-    return m_max;
-}
-
-double
-UniformRandomVariable::GetValue(double min, double max)
-{
-    double v = min + Peek()->RandU01() * (max - min);
-    if (IsAntithetic())
+  NS_LOG_FUNCTION (this << min << max);
+  double v = min + Peek ()->RandU01 () * (max - min);
+  if (IsAntithetic ())
     {
-        v = min + (max - v);
+      v = min + (max - v);
     }
-    NS_LOG_DEBUG("value: " << v << " stream: " << GetStream() << " min: " << min
-                           << " max: " << max);
-    return v;
+  return v;
+}
+uint32_t 
+UniformRandomVariable::GetInteger (uint32_t min, uint32_t max)
+{
+  NS_LOG_FUNCTION (this << min << max);
+  NS_ASSERT (min <= max);
+  return static_cast<uint32_t> ( GetValue ((double) (min), (double) (max) + 1.0) );
 }
 
-uint32_t
-UniformRandomVariable::GetInteger(uint32_t min, uint32_t max)
+double 
+UniformRandomVariable::GetValue (void)
 {
-    NS_ASSERT(min <= max);
-    auto v = static_cast<uint32_t>(GetValue((double)(min), (double)(max) + 1.0));
-    NS_LOG_DEBUG("integer value: " << v << " stream: " << GetStream() << " min: " << min << " max "
-                                   << max);
-    return v;
+  NS_LOG_FUNCTION (this);
+  return GetValue (m_min, m_max);
 }
-
-double
-UniformRandomVariable::GetValue()
+uint32_t 
+UniformRandomVariable::GetInteger (void)
 {
-    return GetValue(m_min, m_max);
-}
-
-uint32_t
-UniformRandomVariable::GetInteger()
-{
-    auto v = static_cast<uint32_t>(GetValue(m_min, m_max + 1));
-    NS_LOG_DEBUG("integer value: " << v << " stream: " << GetStream());
-    return v;
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue (m_min, m_max + 1);
 }
 
 NS_OBJECT_ENSURE_REGISTERED(ConstantRandomVariable);
 
-TypeId
-ConstantRandomVariable::GetTypeId()
+TypeId 
+ConstantRandomVariable::GetTypeId (void)
 {
-    static TypeId tid = TypeId("ns3::ConstantRandomVariable")
-                            .SetParent<RandomVariableStream>()
-                            .SetGroupName("Core")
-                            .AddConstructor<ConstantRandomVariable>()
-                            .AddAttribute("Constant",
-                                          "The constant value returned by this RNG stream.",
-                                          DoubleValue(0),
-                                          MakeDoubleAccessor(&ConstantRandomVariable::m_constant),
-                                          MakeDoubleChecker<double>());
-    return tid;
+  static TypeId tid = TypeId ("ns3::ConstantRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<ConstantRandomVariable> ()
+    .AddAttribute("Constant", "The constant value returned by this RNG stream.",
+		  DoubleValue(0),
+		  MakeDoubleAccessor(&ConstantRandomVariable::m_constant),
+		  MakeDoubleChecker<double>())
+    ;
+  return tid;
+}
+ConstantRandomVariable::ConstantRandomVariable ()
+{
+  // m_constant is initialized after constructor by attributes
+  NS_LOG_FUNCTION (this);
 }
 
-ConstantRandomVariable::ConstantRandomVariable()
+double 
+ConstantRandomVariable::GetConstant (void) const
 {
-    // m_constant is initialized after constructor by attributes
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
+  return m_constant;
 }
 
-double
-ConstantRandomVariable::GetConstant() const
+double 
+ConstantRandomVariable::GetValue (double constant)
 {
-    NS_LOG_FUNCTION(this);
-    return m_constant;
+  NS_LOG_FUNCTION (this << constant);
+  return constant;
+}
+uint32_t 
+ConstantRandomVariable::GetInteger (uint32_t constant)
+{
+  NS_LOG_FUNCTION (this << constant);
+  return constant;
 }
 
-double
-ConstantRandomVariable::GetValue(double constant)
+double 
+ConstantRandomVariable::GetValue (void)
 {
-    NS_LOG_DEBUG("value: " << constant << " stream: " << GetStream());
-    return constant;
+  NS_LOG_FUNCTION (this);
+  return GetValue (m_constant);
 }
-
-uint32_t
-ConstantRandomVariable::GetInteger(uint32_t constant)
+uint32_t 
+ConstantRandomVariable::GetInteger (void)
 {
-    NS_LOG_DEBUG("integer value: " << constant << " stream: " << GetStream());
-    return constant;
-}
-
-double
-ConstantRandomVariable::GetValue()
-{
-    return GetValue(m_constant);
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue (m_constant);
 }
 
 NS_OBJECT_ENSURE_REGISTERED(SequentialRandomVariable);
 
-TypeId
-SequentialRandomVariable::GetTypeId()
+TypeId 
+SequentialRandomVariable::GetTypeId (void)
 {
-    static TypeId tid =
-        TypeId("ns3::SequentialRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<SequentialRandomVariable>()
-            .AddAttribute("Min",
-                          "The first value of the sequence.",
-                          DoubleValue(0),
-                          MakeDoubleAccessor(&SequentialRandomVariable::m_min),
-                          MakeDoubleChecker<double>())
-            .AddAttribute("Max",
-                          "One more than the last value of the sequence.",
-                          DoubleValue(0),
-                          MakeDoubleAccessor(&SequentialRandomVariable::m_max),
-                          MakeDoubleChecker<double>())
-            .AddAttribute("Increment",
-                          "The sequence random variable increment.",
-                          StringValue("ns3::ConstantRandomVariable[Constant=1]"),
-                          MakePointerAccessor(&SequentialRandomVariable::m_increment),
-                          MakePointerChecker<RandomVariableStream>())
-            .AddAttribute("Consecutive",
-                          "The number of times each member of the sequence is repeated.",
-                          IntegerValue(1),
-                          MakeIntegerAccessor(&SequentialRandomVariable::m_consecutive),
-                          MakeIntegerChecker<uint32_t>());
-    return tid;
+  static TypeId tid = TypeId ("ns3::SequentialRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<SequentialRandomVariable> ()
+    .AddAttribute("Min", "The first value of the sequence.",
+		  DoubleValue(0),
+		  MakeDoubleAccessor(&SequentialRandomVariable::m_min),
+		  MakeDoubleChecker<double>())
+    .AddAttribute("Max", "One more than the last value of the sequence.",
+		  DoubleValue(0),
+		  MakeDoubleAccessor(&SequentialRandomVariable::m_max),
+		  MakeDoubleChecker<double>())
+    .AddAttribute("Increment", "The sequence random variable increment.",
+                  StringValue("ns3::ConstantRandomVariable[Constant=1]"),
+                  MakePointerAccessor (&SequentialRandomVariable::m_increment),
+                  MakePointerChecker<RandomVariableStream> ())
+    .AddAttribute("Consecutive", "The number of times each member of the sequence is repeated.",
+                  IntegerValue(1),
+                  MakeIntegerAccessor(&SequentialRandomVariable::m_consecutive),
+                  MakeIntegerChecker<uint32_t>());
+     ;
+  return tid;
+}
+SequentialRandomVariable::SequentialRandomVariable ()
+    :
+    m_current            (0),
+    m_currentConsecutive (0),
+    m_isCurrentSet       (false)
+{
+  // m_min, m_max, m_increment, and m_consecutive are initialized
+  // after constructor by attributes.
+  NS_LOG_FUNCTION (this);
 }
 
-SequentialRandomVariable::SequentialRandomVariable()
-    : m_current(0),
-      m_currentConsecutive(0),
-      m_isCurrentSet(false)
+double 
+SequentialRandomVariable::GetMin (void) const
 {
-    // m_min, m_max, m_increment, and m_consecutive are initialized
-    // after constructor by attributes.
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
+  return m_min;
 }
 
-double
-SequentialRandomVariable::GetMin() const
+double 
+SequentialRandomVariable::GetMax (void) const
 {
-    return m_min;
+  NS_LOG_FUNCTION (this);
+  return m_max;
 }
 
-double
-SequentialRandomVariable::GetMax() const
+Ptr<RandomVariableStream> 
+SequentialRandomVariable::GetIncrement (void) const
 {
-    return m_max;
+  NS_LOG_FUNCTION (this);
+  return m_increment;
 }
 
-Ptr<RandomVariableStream>
-SequentialRandomVariable::GetIncrement() const
+uint32_t 
+SequentialRandomVariable::GetConsecutive (void) const
 {
-    return m_increment;
+  NS_LOG_FUNCTION (this);
+  return m_consecutive;
 }
 
-uint32_t
-SequentialRandomVariable::GetConsecutive() const
+double 
+SequentialRandomVariable::GetValue (void)
 {
-    return m_consecutive;
-}
-
-double
-SequentialRandomVariable::GetValue()
-{
-    // Set the current sequence value if it hasn't been set.
-    if (!m_isCurrentSet)
+  // Set the current sequence value if it hasn't been set.
+  NS_LOG_FUNCTION (this);
+  if (!m_isCurrentSet)
     {
-        // Start the sequence at its minimum value.
-        m_current = m_min;
-        m_isCurrentSet = true;
+      // Start the sequence at its minimium value.
+      m_current = m_min;
+      m_isCurrentSet = true;
     }
 
-    // Return a sequential series of values
-    double r = m_current;
-    if (++m_currentConsecutive == m_consecutive)
+ // Return a sequential series of values
+  double r = m_current;
+  if (++m_currentConsecutive == m_consecutive)
     { // Time to advance to next
-        m_currentConsecutive = 0;
-        m_current += m_increment->GetValue();
-        if (m_current >= m_max)
+      m_currentConsecutive = 0;
+      m_current += m_increment->GetValue ();
+      if (m_current >= m_max)
         {
-            m_current = m_min + (m_current - m_max);
+          m_current = m_min + (m_current - m_max);
         }
     }
-    NS_LOG_DEBUG("value: " << r << " stream: " << GetStream());
-    return r;
+  return r;
+}
+
+uint32_t 
+SequentialRandomVariable::GetInteger (void)
+{
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue ();
 }
 
 NS_OBJECT_ENSURE_REGISTERED(ExponentialRandomVariable);
 
-TypeId
-ExponentialRandomVariable::GetTypeId()
+TypeId 
+ExponentialRandomVariable::GetTypeId (void)
 {
-    static TypeId tid =
-        TypeId("ns3::ExponentialRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<ExponentialRandomVariable>()
-            .AddAttribute("Mean",
-                          "The mean of the values returned by this RNG stream.",
-                          DoubleValue(1.0),
-                          MakeDoubleAccessor(&ExponentialRandomVariable::m_mean),
-                          MakeDoubleChecker<double>())
-            .AddAttribute("Bound",
-                          "The upper bound on the values returned by this RNG stream.",
-                          DoubleValue(0.0),
-                          MakeDoubleAccessor(&ExponentialRandomVariable::m_bound),
-                          MakeDoubleChecker<double>());
-    return tid;
+  static TypeId tid = TypeId ("ns3::ExponentialRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<ExponentialRandomVariable> ()
+    .AddAttribute("Mean", "The mean of the values returned by this RNG stream.",
+		  DoubleValue(1.0),
+		  MakeDoubleAccessor(&ExponentialRandomVariable::m_mean),
+		  MakeDoubleChecker<double>())
+    .AddAttribute("Bound", "The upper bound on the values returned by this RNG stream.",
+		  DoubleValue(0.0),
+		  MakeDoubleAccessor(&ExponentialRandomVariable::m_bound),
+		  MakeDoubleChecker<double>())
+    ;
+  return tid;
+}
+ExponentialRandomVariable::ExponentialRandomVariable ()
+{
+  // m_mean and m_bound are initialized after constructor by attributes
+  NS_LOG_FUNCTION (this);
 }
 
-ExponentialRandomVariable::ExponentialRandomVariable()
+double 
+ExponentialRandomVariable::GetMean (void) const
 {
-    // m_mean and m_bound are initialized after constructor by attributes
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
+  return m_mean;
+}
+double 
+ExponentialRandomVariable::GetBound (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_bound;
 }
 
-double
-ExponentialRandomVariable::GetMean() const
+double 
+ExponentialRandomVariable::GetValue (double mean, double bound)
 {
-    return m_mean;
-}
-
-double
-ExponentialRandomVariable::GetBound() const
-{
-    return m_bound;
-}
-
-double
-ExponentialRandomVariable::GetValue(double mean, double bound)
-{
-    while (true)
+  NS_LOG_FUNCTION (this << mean << bound);
+  while (1)
     {
-        // Get a uniform random variable in [0,1].
-        double v = Peek()->RandU01();
-        if (IsAntithetic())
+      // Get a uniform random variable in [0,1].
+      double v = Peek ()->RandU01 ();
+      if (IsAntithetic ())
         {
-            v = (1 - v);
+          v = (1 - v);
         }
 
-        // Calculate the exponential random variable.
-        double r = -mean * std::log(v);
+      // Calculate the exponential random variable.
+      double r = -mean*std::log (v);
 
-        // Use this value if it's acceptable.
-        if (bound == 0 || r <= bound)
+      // Use this value if it's acceptable.
+      if (bound == 0 || r <= bound)
         {
-            NS_LOG_DEBUG("value: " << r << " stream: " << GetStream() << " mean: " << mean
-                                   << " bound: " << bound);
-            return r;
+          return r;
         }
     }
 }
-
-uint32_t
-ExponentialRandomVariable::GetInteger(uint32_t mean, uint32_t bound)
+uint32_t 
+ExponentialRandomVariable::GetInteger (uint32_t mean, uint32_t bound)
 {
-    NS_LOG_FUNCTION(this << mean << bound);
-    auto v = static_cast<uint32_t>(GetValue(mean, bound));
-    NS_LOG_DEBUG("integer value: " << v << " stream: " << GetStream() << " mean: " << mean
-                                   << " bound: " << bound);
-    return v;
+  NS_LOG_FUNCTION (this << mean << bound);
+  return static_cast<uint32_t> ( GetValue (mean, bound) );
 }
 
-double
-ExponentialRandomVariable::GetValue()
+double 
+ExponentialRandomVariable::GetValue (void)
 {
-    return GetValue(m_mean, m_bound);
+  NS_LOG_FUNCTION (this);
+  return GetValue (m_mean, m_bound);
+}
+uint32_t 
+ExponentialRandomVariable::GetInteger (void)
+{
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue (m_mean, m_bound);
 }
 
 NS_OBJECT_ENSURE_REGISTERED(ParetoRandomVariable);
 
-TypeId
-ParetoRandomVariable::GetTypeId()
+TypeId 
+ParetoRandomVariable::GetTypeId (void)
 {
-    static TypeId tid =
-        TypeId("ns3::ParetoRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<ParetoRandomVariable>()
-            .AddAttribute(
-                "Scale",
-                "The scale parameter for the Pareto distribution returned by this RNG stream.",
-                DoubleValue(1.0),
-                MakeDoubleAccessor(&ParetoRandomVariable::m_scale),
-                MakeDoubleChecker<double>())
-            .AddAttribute(
-                "Shape",
-                "The shape parameter for the Pareto distribution returned by this RNG stream.",
-                DoubleValue(2.0),
-                MakeDoubleAccessor(&ParetoRandomVariable::m_shape),
-                MakeDoubleChecker<double>())
-            .AddAttribute(
-                "Bound",
-                "The upper bound on the values returned by this RNG stream (if non-zero).",
-                DoubleValue(0.0),
-                MakeDoubleAccessor(&ParetoRandomVariable::m_bound),
-                MakeDoubleChecker<double>());
-    return tid;
+  static TypeId tid = TypeId ("ns3::ParetoRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<ParetoRandomVariable> ()
+    .AddAttribute("Mean", "The mean parameter for the Pareto distribution returned by this RNG stream.",
+      DoubleValue(0.0),
+      MakeDoubleAccessor(&ParetoRandomVariable::m_mean),
+      MakeDoubleChecker<double>(),
+      TypeId::DEPRECATED,
+      "Not anymore used. Use 'Scale' instead - changing this attribute has no effect.")
+    .AddAttribute("Scale", "The scale parameter for the Pareto distribution returned by this RNG stream.",
+      DoubleValue(1.0),
+      MakeDoubleAccessor(&ParetoRandomVariable::m_scale),
+      MakeDoubleChecker<double>())
+    .AddAttribute("Shape", "The shape parameter for the Pareto distribution returned by this RNG stream.",
+		  DoubleValue(2.0),
+		  MakeDoubleAccessor(&ParetoRandomVariable::m_shape),
+		  MakeDoubleChecker<double>())
+    .AddAttribute("Bound", "The upper bound on the values returned by this RNG stream (if non-zero).",
+		  DoubleValue(0.0),
+		  MakeDoubleAccessor(&ParetoRandomVariable::m_bound),
+		  MakeDoubleChecker<double>())
+    ;
+  return tid;
+}
+ParetoRandomVariable::ParetoRandomVariable ()
+{
+  // m_shape, m_shape, and m_bound are initialized after constructor
+  // by attributes
+  NS_LOG_FUNCTION (this);
+  NS_UNUSED (m_mean);
 }
 
-ParetoRandomVariable::ParetoRandomVariable()
+double 
+ParetoRandomVariable::GetMean (void) const
 {
-    // m_shape, m_shape, and m_bound are initialized after constructor
-    // by attributes
-    NS_LOG_FUNCTION(this);
-}
+  NS_LOG_FUNCTION (this);
 
-double
-ParetoRandomVariable::GetScale() const
-{
-    return m_scale;
-}
+  double mean = std::numeric_limits<double>::infinity();
 
-double
-ParetoRandomVariable::GetShape() const
-{
-    return m_shape;
-}
-
-double
-ParetoRandomVariable::GetBound() const
-{
-    return m_bound;
-}
-
-double
-ParetoRandomVariable::GetValue(double scale, double shape, double bound)
-{
-    while (true)
+  if (m_shape > 1)
     {
-        // Get a uniform random variable in [0,1].
-        double v = Peek()->RandU01();
-        if (IsAntithetic())
+      mean = m_shape * m_scale / (m_shape -1);
+    }
+
+  return mean;
+}
+
+double 
+ParetoRandomVariable::GetScale (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_scale;
+}
+
+double
+ParetoRandomVariable::GetShape (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_shape;
+}
+
+double 
+ParetoRandomVariable::GetBound (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_bound;
+}
+
+double 
+ParetoRandomVariable::GetValue (double scale, double shape, double bound)
+{
+  // Calculate the scale parameter.
+  NS_LOG_FUNCTION (this << scale << shape << bound);
+
+  while (1)
+    {
+      // Get a uniform random variable in [0,1].
+      double v = Peek ()->RandU01 ();
+      if (IsAntithetic ())
         {
-            v = (1 - v);
+          v = (1 - v);
         }
 
-        // Calculate the Pareto random variable.
-        double r = (scale * (1.0 / std::pow(v, 1.0 / shape)));
+      // Calculate the Pareto random variable.
+      double r = (scale * ( 1.0 / std::pow (v, 1.0 / shape)));
 
-        // Use this value if it's acceptable.
-        if (bound == 0 || r <= bound)
+      // Use this value if it's acceptable.
+      if (bound == 0 || r <= bound)
         {
-            NS_LOG_DEBUG("value: " << r << " stream: " << GetStream() << " scale: " << scale
-                                   << " shape: " << shape << " bound: " << bound);
-            return r;
+          return r;
         }
     }
 }
-
-uint32_t
-ParetoRandomVariable::GetInteger(uint32_t scale, uint32_t shape, uint32_t bound)
+uint32_t 
+ParetoRandomVariable::GetInteger (uint32_t scale, uint32_t shape, uint32_t bound)
 {
-    auto v = static_cast<uint32_t>(GetValue(scale, shape, bound));
-    NS_LOG_DEBUG("integer value: " << v << " stream: " << GetStream() << " scale: " << scale
-                                   << " shape: " << shape << " bound: " << bound);
-    return v;
+  NS_LOG_FUNCTION (this << scale << shape << bound);
+  return static_cast<uint32_t> ( GetValue (scale, shape, bound) );
 }
 
-double
-ParetoRandomVariable::GetValue()
+double 
+ParetoRandomVariable::GetValue (void)
 {
-    return GetValue(m_scale, m_shape, m_bound);
+  NS_LOG_FUNCTION (this);
+  return GetValue (m_scale, m_shape, m_bound);
+}
+uint32_t 
+ParetoRandomVariable::GetInteger (void)
+{
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue (m_scale, m_shape, m_bound);
 }
 
 NS_OBJECT_ENSURE_REGISTERED(WeibullRandomVariable);
 
-TypeId
-WeibullRandomVariable::GetTypeId()
+TypeId 
+WeibullRandomVariable::GetTypeId (void)
 {
-    static TypeId tid =
-        TypeId("ns3::WeibullRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<WeibullRandomVariable>()
-            .AddAttribute(
-                "Scale",
-                "The scale parameter for the Weibull distribution returned by this RNG stream.",
-                DoubleValue(1.0),
-                MakeDoubleAccessor(&WeibullRandomVariable::m_scale),
-                MakeDoubleChecker<double>())
-            .AddAttribute(
-                "Shape",
-                "The shape parameter for the Weibull distribution returned by this RNG stream.",
-                DoubleValue(1),
-                MakeDoubleAccessor(&WeibullRandomVariable::m_shape),
-                MakeDoubleChecker<double>())
-            .AddAttribute("Bound",
-                          "The upper bound on the values returned by this RNG stream.",
-                          DoubleValue(0.0),
-                          MakeDoubleAccessor(&WeibullRandomVariable::m_bound),
-                          MakeDoubleChecker<double>());
-    return tid;
+  static TypeId tid = TypeId ("ns3::WeibullRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<WeibullRandomVariable> ()
+    .AddAttribute("Scale", "The scale parameter for the Weibull distribution returned by this RNG stream.",
+		  DoubleValue(1.0),
+		  MakeDoubleAccessor(&WeibullRandomVariable::m_scale),
+		  MakeDoubleChecker<double>())
+    .AddAttribute("Shape", "The shape parameter for the Weibull distribution returned by this RNG stream.",
+		  DoubleValue(1),
+		  MakeDoubleAccessor(&WeibullRandomVariable::m_shape),
+		  MakeDoubleChecker<double>())
+    .AddAttribute("Bound", "The upper bound on the values returned by this RNG stream.",
+		  DoubleValue(0.0),
+		  MakeDoubleAccessor(&WeibullRandomVariable::m_bound),
+		  MakeDoubleChecker<double>())
+    ;
+  return tid;
+}
+WeibullRandomVariable::WeibullRandomVariable ()
+{
+  // m_scale, m_shape, and m_bound are initialized after constructor
+  // by attributes
+  NS_LOG_FUNCTION (this);
 }
 
-WeibullRandomVariable::WeibullRandomVariable()
+double 
+WeibullRandomVariable::GetScale (void) const
 {
-    // m_scale, m_shape, and m_bound are initialized after constructor
-    // by attributes
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
+  return m_scale;
+}
+double 
+WeibullRandomVariable::GetShape (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_shape;
+}
+double 
+WeibullRandomVariable::GetBound (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_bound;
 }
 
-double
-WeibullRandomVariable::GetScale() const
+double 
+WeibullRandomVariable::GetValue (double scale, double shape, double bound)
 {
-    return m_scale;
-}
-
-double
-WeibullRandomVariable::GetShape() const
-{
-    return m_shape;
-}
-
-double
-WeibullRandomVariable::GetBound() const
-{
-    return m_bound;
-}
-
-double
-WeibullRandomVariable::GetMean(double scale, double shape)
-{
-    NS_LOG_FUNCTION(scale << shape);
-    return scale * std::tgamma(1 + (1 / shape));
-}
-
-double
-WeibullRandomVariable::GetMean() const
-{
-    NS_LOG_FUNCTION(this);
-    return GetMean(m_scale, m_shape);
-}
-
-double
-WeibullRandomVariable::GetValue(double scale, double shape, double bound)
-{
-    double exponent = 1.0 / shape;
-    while (true)
+  NS_LOG_FUNCTION (this << scale << shape << bound);
+  double exponent = 1.0 / shape;
+  while (1)
     {
-        // Get a uniform random variable in [0,1].
-        double v = Peek()->RandU01();
-        if (IsAntithetic())
+      // Get a uniform random variable in [0,1].
+      double v = Peek ()->RandU01 ();
+      if (IsAntithetic ())
         {
-            v = (1 - v);
+          v = (1 - v);
         }
 
-        // Calculate the Weibull random variable.
-        double r = scale * std::pow(-std::log(v), exponent);
+      // Calculate the Weibull random variable.
+      double r = scale * std::pow ( -std::log (v), exponent);
 
-        // Use this value if it's acceptable.
-        if (bound == 0 || r <= bound)
+      // Use this value if it's acceptable.
+      if (bound == 0 || r <= bound)
         {
-            NS_LOG_DEBUG("value: " << r << " stream: " << GetStream() << " scale: " << scale
-                                   << " shape: " << shape << " bound: " << bound);
-            return r;
+          return r;
         }
     }
 }
-
-uint32_t
-WeibullRandomVariable::GetInteger(uint32_t scale, uint32_t shape, uint32_t bound)
+uint32_t 
+WeibullRandomVariable::GetInteger (uint32_t scale, uint32_t shape, uint32_t bound)
 {
-    auto v = static_cast<uint32_t>(GetValue(scale, shape, bound));
-    NS_LOG_DEBUG("integer value: " << v << " stream: " << GetStream() << " scale: " << scale
-                                   << " shape: " << shape << " bound: " << bound);
-    return v;
+  NS_LOG_FUNCTION (this << scale << shape << bound);
+  return static_cast<uint32_t> ( GetValue (scale, shape, bound) );
 }
 
-double
-WeibullRandomVariable::GetValue()
+double 
+WeibullRandomVariable::GetValue (void)
 {
-    NS_LOG_FUNCTION(this);
-    return GetValue(m_scale, m_shape, m_bound);
+  NS_LOG_FUNCTION (this);
+  return GetValue (m_scale, m_shape, m_bound);
+}
+uint32_t 
+WeibullRandomVariable::GetInteger (void)
+{
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue (m_scale, m_shape, m_bound);
 }
 
 NS_OBJECT_ENSURE_REGISTERED(NormalRandomVariable);
 
 const double NormalRandomVariable::INFINITE_VALUE = 1e307;
 
-TypeId
-NormalRandomVariable::GetTypeId()
+TypeId 
+NormalRandomVariable::GetTypeId (void)
 {
-    static TypeId tid =
-        TypeId("ns3::NormalRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<NormalRandomVariable>()
-            .AddAttribute("Mean",
-                          "The mean value for the normal distribution returned by this RNG stream.",
-                          DoubleValue(0.0),
-                          MakeDoubleAccessor(&NormalRandomVariable::m_mean),
-                          MakeDoubleChecker<double>())
-            .AddAttribute(
-                "Variance",
-                "The variance value for the normal distribution returned by this RNG stream.",
-                DoubleValue(1.0),
-                MakeDoubleAccessor(&NormalRandomVariable::m_variance),
-                MakeDoubleChecker<double>())
-            .AddAttribute("Bound",
-                          "The bound on the values returned by this RNG stream.",
-                          DoubleValue(INFINITE_VALUE),
-                          MakeDoubleAccessor(&NormalRandomVariable::m_bound),
-                          MakeDoubleChecker<double>());
-    return tid;
+  static TypeId tid = TypeId ("ns3::NormalRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<NormalRandomVariable> ()
+    .AddAttribute("Mean", "The mean value for the normal distribution returned by this RNG stream.",
+		  DoubleValue(0.0),
+		  MakeDoubleAccessor(&NormalRandomVariable::m_mean),
+		  MakeDoubleChecker<double>())
+    .AddAttribute("Variance", "The variance value for the normal distribution returned by this RNG stream.",
+		  DoubleValue(1.0),
+		  MakeDoubleAccessor(&NormalRandomVariable::m_variance),
+		  MakeDoubleChecker<double>())
+    .AddAttribute("Bound", "The bound on the values returned by this RNG stream.",
+		  DoubleValue(INFINITE_VALUE),
+		  MakeDoubleAccessor(&NormalRandomVariable::m_bound),
+		  MakeDoubleChecker<double>())
+    ;
+  return tid;
+}
+NormalRandomVariable::NormalRandomVariable ()
+  :
+  m_nextValid (false)
+{
+  // m_mean, m_variance, and m_bound are initialized after constructor
+  // by attributes
+  NS_LOG_FUNCTION (this);
 }
 
-NormalRandomVariable::NormalRandomVariable()
-    : m_nextValid(false)
+double 
+NormalRandomVariable::GetMean (void) const
 {
-    // m_mean, m_variance, and m_bound are initialized after constructor
-    // by attributes
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
+  return m_mean;
+}
+double 
+NormalRandomVariable::GetVariance (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_variance;
+}
+double 
+NormalRandomVariable::GetBound (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_bound;
 }
 
-double
-NormalRandomVariable::GetMean() const
+double 
+NormalRandomVariable::GetValue (double mean, double variance, double bound)
 {
-    return m_mean;
-}
-
-double
-NormalRandomVariable::GetVariance() const
-{
-    return m_variance;
-}
-
-double
-NormalRandomVariable::GetBound() const
-{
-    return m_bound;
-}
-
-double
-NormalRandomVariable::GetValue(double mean, double variance, double bound)
-{
-    if (m_nextValid)
+  NS_LOG_FUNCTION (this << mean << variance << bound);
+  if (m_nextValid)
     { // use previously generated
-        m_nextValid = false;
-        double x2 = mean + m_v2 * m_y * std::sqrt(variance);
-        if (std::fabs(x2 - mean) <= bound)
-        {
-            NS_LOG_DEBUG("value: " << x2 << " stream: " << GetStream() << " mean: " << mean
-                                   << " variance: " << variance << " bound: " << bound);
-            return x2;
-        }
+      m_nextValid = false;
+      return m_next;
     }
-    while (true)
+  while (1)
     { // See Simulation Modeling and Analysis p. 466 (Averill Law)
-        // for algorithm; basically a Box-Muller transform:
-        // http://en.wikipedia.org/wiki/Box-Muller_transform
-        double u1 = Peek()->RandU01();
-        double u2 = Peek()->RandU01();
-        if (IsAntithetic())
+      // for algorithm; basically a Box-Muller transform:
+      // http://en.wikipedia.org/wiki/Box-Muller_transform
+      double u1 = Peek ()->RandU01 ();
+      double u2 = Peek ()->RandU01 ();
+      if (IsAntithetic ())
         {
-            u1 = (1 - u1);
-            u2 = (1 - u2);
+          u1 = (1 - u1);
+          u2 = (1 - u2);
         }
-        double v1 = 2 * u1 - 1;
-        double v2 = 2 * u2 - 1;
-        double w = v1 * v1 + v2 * v2;
-        if (w <= 1.0)
+      double v1 = 2 * u1 - 1;
+      double v2 = 2 * u2 - 1;
+      double w = v1 * v1 + v2 * v2;
+      if (w <= 1.0)
         { // Got good pair
-            double y = std::sqrt((-2 * std::log(w)) / w);
-            double x1 = mean + v1 * y * std::sqrt(variance);
-            // if x1 is in bounds, return it, cache v2 and y
-            if (std::fabs(x1 - mean) <= bound)
+          double y = std::sqrt ((-2 * std::log (w)) / w);
+          m_next = mean + v2 * y * std::sqrt (variance);
+          // if next is in bounds, it is valid
+          m_nextValid = std::fabs (m_next - mean) <= bound;
+          double x1 = mean + v1 * y * std::sqrt (variance);
+          // if x1 is in bounds, return it
+          if (std::fabs (x1 - mean) <= bound)
             {
-                m_nextValid = true;
-                m_y = y;
-                m_v2 = v2;
-                NS_LOG_DEBUG("value: " << x1 << " stream: " << GetStream() << " mean: " << mean
-                                       << " variance: " << variance << " bound: " << bound);
-                return x1;
+              return x1;
             }
-            // otherwise try and return the other if it is valid
-            double x2 = mean + v2 * y * std::sqrt(variance);
-            if (std::fabs(x2 - mean) <= bound)
+          // otherwise try and return m_next if it is valid
+          else if (m_nextValid)
             {
-                m_nextValid = false;
-                NS_LOG_DEBUG("value: " << x2 << " stream: " << GetStream() << " mean: " << mean
-                                       << " variance: " << variance << " bound: " << bound);
-                return x2;
+              m_nextValid = false;
+              return m_next;
             }
-            // otherwise, just run this loop again
+          // otherwise, just run this loop again
         }
     }
 }
 
-uint32_t
-NormalRandomVariable::GetInteger(uint32_t mean, uint32_t variance, uint32_t bound)
+uint32_t 
+NormalRandomVariable::GetInteger (uint32_t mean, uint32_t variance, uint32_t bound)
 {
-    auto v = static_cast<uint32_t>(GetValue(mean, variance, bound));
-    NS_LOG_DEBUG("integer value: " << v << " stream: " << GetStream() << " mean: " << mean
-                                   << " variance: " << variance << " bound: " << bound);
-    return v;
+  NS_LOG_FUNCTION (this << mean << variance << bound);
+  return static_cast<uint32_t> ( GetValue (mean, variance, bound) );
 }
 
-double
-NormalRandomVariable::GetValue()
+double 
+NormalRandomVariable::GetValue (void)
 {
-    return GetValue(m_mean, m_variance, m_bound);
+  NS_LOG_FUNCTION (this);
+  return GetValue (m_mean, m_variance, m_bound);
+}
+uint32_t 
+NormalRandomVariable::GetInteger (void)
+{
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue (m_mean, m_variance, m_bound);
 }
 
 NS_OBJECT_ENSURE_REGISTERED(LogNormalRandomVariable);
 
-TypeId
-LogNormalRandomVariable::GetTypeId()
+TypeId 
+LogNormalRandomVariable::GetTypeId (void)
 {
-    static TypeId tid =
-        TypeId("ns3::LogNormalRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<LogNormalRandomVariable>()
-            .AddAttribute(
-                "Mu",
-                "The mu value for the log-normal distribution returned by this RNG stream.",
-                DoubleValue(0.0),
-                MakeDoubleAccessor(&LogNormalRandomVariable::m_mu),
-                MakeDoubleChecker<double>())
-            .AddAttribute(
-                "Sigma",
-                "The sigma value for the log-normal distribution returned by this RNG stream.",
-                DoubleValue(1.0),
-                MakeDoubleAccessor(&LogNormalRandomVariable::m_sigma),
-                MakeDoubleChecker<double>());
-    return tid;
+  static TypeId tid = TypeId ("ns3::LogNormalRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<LogNormalRandomVariable> ()
+    .AddAttribute("Mu", "The mu value for the log-normal distribution returned by this RNG stream.",
+		  DoubleValue(0.0),
+		  MakeDoubleAccessor(&LogNormalRandomVariable::m_mu),
+		  MakeDoubleChecker<double>())
+    .AddAttribute("Sigma", "The sigma value for the log-normal distribution returned by this RNG stream.",
+		  DoubleValue(1.0),
+		  MakeDoubleAccessor(&LogNormalRandomVariable::m_sigma),
+		  MakeDoubleChecker<double>())
+    ;
+  return tid;
+}
+LogNormalRandomVariable::LogNormalRandomVariable ()
+{
+  // m_mu and m_sigma are initialized after constructor by
+  // attributes
+  NS_LOG_FUNCTION (this);
 }
 
-LogNormalRandomVariable::LogNormalRandomVariable()
-    : m_nextValid(false)
+double 
+LogNormalRandomVariable::GetMu (void) const
 {
-    // m_mu and m_sigma are initialized after constructor by
-    // attributes
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
+  return m_mu;
 }
-
-double
-LogNormalRandomVariable::GetMu() const
+double 
+LogNormalRandomVariable::GetSigma (void) const
 {
-    return m_mu;
-}
-
-double
-LogNormalRandomVariable::GetSigma() const
-{
-    return m_sigma;
+  NS_LOG_FUNCTION (this);
+  return m_sigma;
 }
 
 // The code from this function was adapted from the GNU Scientific
@@ -829,7 +825,19 @@ LogNormalRandomVariable::GetSigma() const
  *
  * Copyright (C) 1996, 1997, 1998, 1999, 2000 James Theiler, Brian Gough
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or (at
+ * your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 /* The lognormal distribution has the form
 
@@ -837,111 +845,100 @@ LogNormalRandomVariable::GetSigma() const
 
    for x > 0. Lognormal random numbers are the exponentials of
    gaussian random numbers */
-double
-LogNormalRandomVariable::GetValue(double mu, double sigma)
+double 
+LogNormalRandomVariable::GetValue (double mu, double sigma)
 {
-    if (m_nextValid)
-    { // use previously generated
-        m_nextValid = false;
-        double v = std::exp(sigma * m_v2 * m_normal + mu);
-        NS_LOG_DEBUG("value: " << v << " stream: " << GetStream() << " mu: " << mu
-                               << " sigma: " << sigma);
-        return v;
-    }
+  double v1, v2, r2, normal, x;
 
-    double v1;
-    double v2;
-    double r2;
-    double normal;
-    double x;
+  NS_LOG_FUNCTION (this << mu << sigma);
 
-    do
+  do
     {
-        /* choose x,y in uniform square (-1,-1) to (+1,+1) */
+      /* choose x,y in uniform square (-1,-1) to (+1,+1) */
 
-        double u1 = Peek()->RandU01();
-        double u2 = Peek()->RandU01();
-        if (IsAntithetic())
+      double u1 = Peek ()->RandU01 ();
+      double u2 = Peek ()->RandU01 ();
+      if (IsAntithetic ())
         {
-            u1 = (1 - u1);
-            u2 = (1 - u2);
+          u1 = (1 - u1);
+          u2 = (1 - u2);
         }
 
-        v1 = -1 + 2 * u1;
-        v2 = -1 + 2 * u2;
+      v1 = -1 + 2 * u1;
+      v2 = -1 + 2 * u2;
 
-        /* see if it is in the unit circle */
-        r2 = v1 * v1 + v2 * v2;
-    } while (r2 > 1.0 || r2 == 0);
+      /* see if it is in the unit circle */
+      r2 = v1 * v1 + v2 * v2;
+    }
+  while (r2 > 1.0 || r2 == 0);
 
-    m_normal = std::sqrt(-2.0 * std::log(r2) / r2);
-    normal = v1 * m_normal;
-    m_nextValid = true;
-    m_v2 = v2;
+  normal = v1 * std::sqrt (-2.0 * std::log (r2) / r2);
 
-    x = std::exp(sigma * normal + mu);
-    NS_LOG_DEBUG("value: " << x << " stream: " << GetStream() << " mu: " << mu
-                           << " sigma: " << sigma);
+  x =  std::exp (sigma * normal + mu);
 
-    return x;
+  return x;
 }
 
-uint32_t
-LogNormalRandomVariable::GetInteger(uint32_t mu, uint32_t sigma)
+uint32_t 
+LogNormalRandomVariable::GetInteger (uint32_t mu, uint32_t sigma)
 {
-    auto v = static_cast<uint32_t>(GetValue(mu, sigma));
-    NS_LOG_DEBUG("integer value: " << v << " stream: " << GetStream() << " mu: " << mu
-                                   << " sigma: " << sigma);
-    return v;
+  NS_LOG_FUNCTION (this << mu << sigma);
+  return static_cast<uint32_t> ( GetValue (mu, sigma));
 }
 
-double
-LogNormalRandomVariable::GetValue()
+double 
+LogNormalRandomVariable::GetValue (void)
 {
-    return GetValue(m_mu, m_sigma);
+  NS_LOG_FUNCTION (this);
+  return GetValue (m_mu, m_sigma);
+}
+uint32_t 
+LogNormalRandomVariable::GetInteger (void)
+{
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue (m_mu, m_sigma);
 }
 
 NS_OBJECT_ENSURE_REGISTERED(GammaRandomVariable);
 
-TypeId
-GammaRandomVariable::GetTypeId()
+TypeId 
+GammaRandomVariable::GetTypeId (void)
 {
-    static TypeId tid =
-        TypeId("ns3::GammaRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<GammaRandomVariable>()
-            .AddAttribute("Alpha",
-                          "The alpha value for the gamma distribution returned by this RNG stream.",
-                          DoubleValue(1.0),
-                          MakeDoubleAccessor(&GammaRandomVariable::m_alpha),
-                          MakeDoubleChecker<double>())
-            .AddAttribute("Beta",
-                          "The beta value for the gamma distribution returned by this RNG stream.",
-                          DoubleValue(1.0),
-                          MakeDoubleAccessor(&GammaRandomVariable::m_beta),
-                          MakeDoubleChecker<double>());
-    return tid;
+  static TypeId tid = TypeId ("ns3::GammaRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<GammaRandomVariable> ()
+    .AddAttribute("Alpha", "The alpha value for the gamma distribution returned by this RNG stream.",
+		  DoubleValue(1.0),
+		  MakeDoubleAccessor(&GammaRandomVariable::m_alpha),
+		  MakeDoubleChecker<double>())
+    .AddAttribute("Beta", "The beta value for the gamma distribution returned by this RNG stream.",
+		  DoubleValue(1.0),
+		  MakeDoubleAccessor(&GammaRandomVariable::m_beta),
+		  MakeDoubleChecker<double>())
+    ;
+  return tid;
+}
+GammaRandomVariable::GammaRandomVariable ()
+  :
+  m_nextValid (false)
+{
+  // m_alpha and m_beta are initialized after constructor by
+  // attributes
+  NS_LOG_FUNCTION (this);
 }
 
-GammaRandomVariable::GammaRandomVariable()
-    : m_nextValid(false)
+double 
+GammaRandomVariable::GetAlpha (void) const
 {
-    // m_alpha and m_beta are initialized after constructor by
-    // attributes
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
+  return m_alpha;
 }
-
-double
-GammaRandomVariable::GetAlpha() const
+double 
+GammaRandomVariable::GetBeta (void) const
 {
-    return m_alpha;
-}
-
-double
-GammaRandomVariable::GetBeta() const
-{
-    return m_beta;
+  NS_LOG_FUNCTION (this);
+  return m_beta;
 }
 
 /*
@@ -949,7 +946,7 @@ GammaRandomVariable::GetBeta() const
   tools/ranvar.cc
 
   Originally the algorithm was devised by Marsaglia in 2000:
-  G. Marsaglia, W. W. Tsang: A simple method for generating Gamma variables
+  G. Marsaglia, W. W. Tsang: A simple method for gereating Gamma variables
   ACM Transactions on mathematical software, Vol. 26, No. 3, Sept. 2000
 
   The Gamma distribution density function has the form
@@ -960,166 +957,161 @@ GammaRandomVariable::GetBeta() const
 
   for x > 0.
 */
-double
-GammaRandomVariable::GetValue(double alpha, double beta)
+double 
+GammaRandomVariable::GetValue (double alpha, double beta)
 {
-    if (alpha < 1)
+  NS_LOG_FUNCTION (this << alpha << beta);
+  if (alpha < 1)
     {
-        double u = Peek()->RandU01();
-        if (IsAntithetic())
+      double u = Peek ()->RandU01 ();
+      if (IsAntithetic ())
         {
-            u = (1 - u);
+          u = (1 - u);
         }
-        double v = GetValue(1.0 + alpha, beta) * std::pow(u, 1.0 / alpha);
-        NS_LOG_DEBUG("value: " << v << " stream: " << GetStream() << " alpha: " << alpha
-                               << " beta: " << beta);
-        return GetValue(1.0 + alpha, beta) * std::pow(u, 1.0 / alpha);
+      return GetValue (1.0 + alpha, beta) * std::pow (u, 1.0 / alpha);
     }
 
-    double x;
-    double v;
-    double u;
-    double d = alpha - 1.0 / 3.0;
-    double c = (1.0 / 3.0) / std::sqrt(d);
+  double x, v, u;
+  double d = alpha - 1.0 / 3.0;
+  double c = (1.0 / 3.0) / std::sqrt (d);
 
-    while (true)
+  while (1)
     {
-        do
+      do
         {
-            // Get a value from a normal distribution that has mean
-            // zero, variance 1, and no bound.
-            double mean = 0.0;
-            double variance = 1.0;
-            double bound = NormalRandomVariable::INFINITE_VALUE;
-            x = GetNormalValue(mean, variance, bound);
+          // Get a value from a normal distribution that has mean
+          // zero, variance 1, and no bound.
+          double mean = 0.0;
+          double variance = 1.0;
+          double bound = NormalRandomVariable::INFINITE_VALUE;
+          x = GetNormalValue (mean, variance, bound);
 
-            v = 1.0 + c * x;
-        } while (v <= 0);
+          v = 1.0 + c * x;
+        }
+      while (v <= 0);
 
-        v = v * v * v;
-        u = Peek()->RandU01();
-        if (IsAntithetic())
+      v = v * v * v;
+      u = Peek ()->RandU01 ();
+      if (IsAntithetic ())
         {
-            u = (1 - u);
+          u = (1 - u);
         }
-        if (u < 1 - 0.0331 * x * x * x * x)
+      if (u < 1 - 0.0331 * x * x * x * x)
         {
-            break;
+          break;
         }
-        if (std::log(u) < 0.5 * x * x + d * (1 - v + std::log(v)))
+      if (std::log (u) < 0.5 * x * x + d * (1 - v + std::log (v)))
         {
-            break;
+          break;
         }
     }
 
-    double value = beta * d * v;
-    NS_LOG_DEBUG("value: " << value << " stream: " << GetStream() << " alpha: " << alpha
-                           << " beta: " << beta);
-    return value;
+  return beta * d * v;
 }
 
-double
-GammaRandomVariable::GetValue()
+uint32_t 
+GammaRandomVariable::GetInteger (uint32_t alpha, uint32_t beta)
 {
-    return GetValue(m_alpha, m_beta);
+  NS_LOG_FUNCTION (this << alpha << beta);
+  return static_cast<uint32_t> ( GetValue (alpha, beta));
 }
 
-double
-GammaRandomVariable::GetNormalValue(double mean, double variance, double bound)
+double 
+GammaRandomVariable::GetValue (void)
 {
-    if (m_nextValid)
+  NS_LOG_FUNCTION (this);
+  return GetValue (m_alpha, m_beta);
+}
+uint32_t 
+GammaRandomVariable::GetInteger (void)
+{
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue (m_alpha, m_beta);
+}
+
+double 
+GammaRandomVariable::GetNormalValue (double mean, double variance, double bound)
+{
+  NS_LOG_FUNCTION (this << mean << variance << bound);
+  if (m_nextValid)
     { // use previously generated
-        m_nextValid = false;
-        double x2 = mean + m_v2 * m_y * std::sqrt(variance);
-        if (std::fabs(x2 - mean) <= bound)
-        {
-            NS_LOG_DEBUG("value: " << x2 << " stream: " << GetStream() << " mean: " << mean
-                                   << " variance: " << variance << " bound: " << bound);
-            return x2;
-        }
+      m_nextValid = false;
+      return m_next;
     }
-    while (true)
+  while (1)
     { // See Simulation Modeling and Analysis p. 466 (Averill Law)
-        // for algorithm; basically a Box-Muller transform:
-        // http://en.wikipedia.org/wiki/Box-Muller_transform
-        double u1 = Peek()->RandU01();
-        double u2 = Peek()->RandU01();
-        if (IsAntithetic())
+      // for algorithm; basically a Box-Muller transform:
+      // http://en.wikipedia.org/wiki/Box-Muller_transform
+      double u1 = Peek ()->RandU01 ();
+      double u2 = Peek ()->RandU01 ();
+      if (IsAntithetic ())
         {
-            u1 = (1 - u1);
-            u2 = (1 - u2);
+          u1 = (1 - u1);
+          u2 = (1 - u2);
         }
-        double v1 = 2 * u1 - 1;
-        double v2 = 2 * u2 - 1;
-        double w = v1 * v1 + v2 * v2;
-        if (w <= 1.0)
+      double v1 = 2 * u1 - 1;
+      double v2 = 2 * u2 - 1;
+      double w = v1 * v1 + v2 * v2;
+      if (w <= 1.0)
         { // Got good pair
-            double y = std::sqrt((-2 * std::log(w)) / w);
-            double x1 = mean + v1 * y * std::sqrt(variance);
-            // if x1 is in bounds, return it, cache v2 an y
-            if (std::fabs(x1 - mean) <= bound)
+          double y = std::sqrt ((-2 * std::log (w)) / w);
+          m_next = mean + v2 * y * std::sqrt (variance);
+          // if next is in bounds, it is valid
+          m_nextValid = std::fabs (m_next - mean) <= bound;
+          double x1 = mean + v1 * y * std::sqrt (variance);
+          // if x1 is in bounds, return it
+          if (std::fabs (x1 - mean) <= bound)
             {
-                m_nextValid = true;
-                m_y = y;
-                m_v2 = v2;
-                NS_LOG_DEBUG("value: " << x1 << " stream: " << GetStream() << " mean: " << mean
-                                       << " variance: " << variance << " bound: " << bound);
-                return x1;
+              return x1;
             }
-            // otherwise try and return the other if it is valid
-            double x2 = mean + v2 * y * std::sqrt(variance);
-            if (std::fabs(x2 - mean) <= bound)
+          // otherwise try and return m_next if it is valid
+          else if (m_nextValid)
             {
-                m_nextValid = false;
-                NS_LOG_DEBUG("value: " << x2 << " stream: " << GetStream() << " mean: " << mean
-                                       << " variance: " << variance << " bound: " << bound);
-                return x2;
+              m_nextValid = false;
+              return m_next;
             }
-            // otherwise, just run this loop again
+          // otherwise, just run this loop again
         }
     }
 }
 
 NS_OBJECT_ENSURE_REGISTERED(ErlangRandomVariable);
 
-TypeId
-ErlangRandomVariable::GetTypeId()
+TypeId 
+ErlangRandomVariable::GetTypeId (void)
 {
-    static TypeId tid =
-        TypeId("ns3::ErlangRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<ErlangRandomVariable>()
-            .AddAttribute("K",
-                          "The k value for the Erlang distribution returned by this RNG stream.",
-                          IntegerValue(1),
-                          MakeIntegerAccessor(&ErlangRandomVariable::m_k),
-                          MakeIntegerChecker<uint32_t>())
-            .AddAttribute(
-                "Lambda",
-                "The lambda value for the Erlang distribution returned by this RNG stream.",
-                DoubleValue(1.0),
-                MakeDoubleAccessor(&ErlangRandomVariable::m_lambda),
-                MakeDoubleChecker<double>());
-    return tid;
+  static TypeId tid = TypeId ("ns3::ErlangRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<ErlangRandomVariable> ()
+    .AddAttribute("K", "The k value for the Erlang distribution returned by this RNG stream.",
+		  IntegerValue(1),
+		  MakeIntegerAccessor(&ErlangRandomVariable::m_k),
+		  MakeIntegerChecker<uint32_t>())
+    .AddAttribute("Lambda", "The lambda value for the Erlang distribution returned by this RNG stream.",
+		  DoubleValue(1.0),
+		  MakeDoubleAccessor(&ErlangRandomVariable::m_lambda),
+		  MakeDoubleChecker<double>())
+    ;
+  return tid;
+}
+ErlangRandomVariable::ErlangRandomVariable ()
+{
+  // m_k and m_lambda are initialized after constructor by attributes
+  NS_LOG_FUNCTION (this);
 }
 
-ErlangRandomVariable::ErlangRandomVariable()
+uint32_t 
+ErlangRandomVariable::GetK (void) const
 {
-    // m_k and m_lambda are initialized after constructor by attributes
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
+  return m_k;
 }
-
-uint32_t
-ErlangRandomVariable::GetK() const
+double 
+ErlangRandomVariable::GetLambda (void) const
 {
-    return m_k;
-}
-
-double
-ErlangRandomVariable::GetLambda() const
-{
-    return m_lambda;
+  NS_LOG_FUNCTION (this);
+  return m_lambda;
 }
 
 /*
@@ -1134,936 +1126,548 @@ ErlangRandomVariable::GetLambda() const
 
   for x > 0.
 */
-double
-ErlangRandomVariable::GetValue(uint32_t k, double lambda)
+double 
+ErlangRandomVariable::GetValue (uint32_t k, double lambda)
 {
-    double mean = lambda;
-    double bound = 0.0;
+  NS_LOG_FUNCTION (this << k << lambda);
+  double mean = lambda;
+  double bound = 0.0;
 
-    double result = 0;
-    for (unsigned int i = 0; i < k; ++i)
+  double result = 0;
+  for (unsigned int i = 0; i < k; ++i)
     {
-        result += GetExponentialValue(mean, bound);
+      result += GetExponentialValue (mean, bound);
+
     }
-    NS_LOG_DEBUG("value: " << result << " stream: " << GetStream() << " k: " << k
-                           << " lambda: " << lambda);
-    return result;
+
+  return result;
 }
 
-uint32_t
-ErlangRandomVariable::GetInteger(uint32_t k, uint32_t lambda)
+uint32_t 
+ErlangRandomVariable::GetInteger (uint32_t k, uint32_t lambda)
 {
-    auto v = static_cast<uint32_t>(GetValue(k, lambda));
-    NS_LOG_DEBUG("integer value: " << v << " stream: " << GetStream() << " k: " << k
-                                   << " lambda: " << lambda);
-    return v;
+  NS_LOG_FUNCTION (this << k << lambda);
+  return static_cast<uint32_t> ( GetValue (k, lambda));
 }
 
-double
-ErlangRandomVariable::GetValue()
+double 
+ErlangRandomVariable::GetValue (void)
 {
-    return GetValue(m_k, m_lambda);
+  NS_LOG_FUNCTION (this);
+  return GetValue (m_k, m_lambda);
+}
+uint32_t 
+ErlangRandomVariable::GetInteger (void)
+{
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue (m_k, m_lambda);
 }
 
-double
-ErlangRandomVariable::GetExponentialValue(double mean, double bound)
+double 
+ErlangRandomVariable::GetExponentialValue (double mean, double bound)
 {
-    while (true)
+  NS_LOG_FUNCTION (this << mean << bound);
+  while (1)
     {
-        // Get a uniform random variable in [0,1].
-        double v = Peek()->RandU01();
-        if (IsAntithetic())
+      // Get a uniform random variable in [0,1].
+      double v = Peek ()->RandU01 ();
+      if (IsAntithetic ())
         {
-            v = (1 - v);
+          v = (1 - v);
         }
 
-        // Calculate the exponential random variable.
-        double r = -mean * std::log(v);
+      // Calculate the exponential random variable.
+      double r = -mean*std::log (v);
 
-        // Use this value if it's acceptable.
-        if (bound == 0 || r <= bound)
+      // Use this value if it's acceptable.
+      if (bound == 0 || r <= bound)
         {
-            NS_LOG_DEBUG("value: " << r << " stream: " << GetStream() << " mean:: " << mean
-                                   << " bound: " << bound);
-            return r;
+          return r;
         }
     }
 }
 
 NS_OBJECT_ENSURE_REGISTERED(TriangularRandomVariable);
 
-TypeId
-TriangularRandomVariable::GetTypeId()
+TypeId 
+TriangularRandomVariable::GetTypeId (void)
 {
-    static TypeId tid =
-        TypeId("ns3::TriangularRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<TriangularRandomVariable>()
-            .AddAttribute(
-                "Mean",
-                "The mean value for the triangular distribution returned by this RNG stream.",
-                DoubleValue(0.5),
-                MakeDoubleAccessor(&TriangularRandomVariable::m_mean),
-                MakeDoubleChecker<double>())
-            .AddAttribute("Min",
-                          "The lower bound on the values returned by this RNG stream.",
-                          DoubleValue(0.0),
-                          MakeDoubleAccessor(&TriangularRandomVariable::m_min),
-                          MakeDoubleChecker<double>())
-            .AddAttribute("Max",
-                          "The upper bound on the values returned by this RNG stream.",
-                          DoubleValue(1.0),
-                          MakeDoubleAccessor(&TriangularRandomVariable::m_max),
-                          MakeDoubleChecker<double>());
-    return tid;
+  static TypeId tid = TypeId ("ns3::TriangularRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<TriangularRandomVariable> ()
+    .AddAttribute("Mean", "The mean value for the triangular distribution returned by this RNG stream.",
+		  DoubleValue(0.5),
+		  MakeDoubleAccessor(&TriangularRandomVariable::m_mean),
+		  MakeDoubleChecker<double>())
+    .AddAttribute("Min", "The lower bound on the values returned by this RNG stream.",
+		  DoubleValue(0.0),
+		  MakeDoubleAccessor(&TriangularRandomVariable::m_min),
+		  MakeDoubleChecker<double>())
+    .AddAttribute("Max", "The upper bound on the values returned by this RNG stream.",
+		  DoubleValue(1.0),
+		  MakeDoubleAccessor(&TriangularRandomVariable::m_max),
+		  MakeDoubleChecker<double>())
+    ;
+  return tid;
+}
+TriangularRandomVariable::TriangularRandomVariable ()
+{
+  // m_mean, m_min, and m_max are initialized after constructor by
+  // attributes
+  NS_LOG_FUNCTION (this);
 }
 
-TriangularRandomVariable::TriangularRandomVariable()
+double 
+TriangularRandomVariable::GetMean (void) const
 {
-    // m_mean, m_min, and m_max are initialized after constructor by
-    // attributes
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
+  return m_mean;
+}
+double 
+TriangularRandomVariable::GetMin (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_min;
+}
+double 
+TriangularRandomVariable::GetMax (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_max;
 }
 
-double
-TriangularRandomVariable::GetMean() const
+double 
+TriangularRandomVariable::GetValue (double mean, double min, double max)
 {
-    return m_mean;
-}
+  // Calculate the mode.
+  NS_LOG_FUNCTION (this << mean << min << max);
+  double mode = 3.0 * mean - min - max;
 
-double
-TriangularRandomVariable::GetMin() const
-{
-    return m_min;
-}
-
-double
-TriangularRandomVariable::GetMax() const
-{
-    return m_max;
-}
-
-double
-TriangularRandomVariable::GetValue(double mean, double min, double max)
-{
-    // Calculate the mode.
-    double mode = 3.0 * mean - min - max;
-
-    // Get a uniform random variable in [0,1].
-    double u = Peek()->RandU01();
-    if (IsAntithetic())
+  // Get a uniform random variable in [0,1].
+  double u = Peek ()->RandU01 ();
+  if (IsAntithetic ())
     {
-        u = (1 - u);
+      u = (1 - u);
     }
 
-    // Calculate the triangular random variable.
-    if (u <= (mode - min) / (max - min))
+  // Calculate the triangular random variable.
+  if (u <= (mode - min) / (max - min) )
     {
-        double v = min + std::sqrt(u * (max - min) * (mode - min));
-        NS_LOG_DEBUG("value: " << v << " stream: " << GetStream() << " mean: " << mean
-                               << " min: " << min << " max: " << max);
-        return v;
+      return min + std::sqrt (u * (max - min) * (mode - min) );
     }
-    else
+  else
     {
-        double v = max - std::sqrt((1 - u) * (max - min) * (max - mode));
-        NS_LOG_DEBUG("value: " << v << " stream: " << GetStream() << " mean: " << mean
-                               << " min: " << min << " max: " << max);
-        return v;
+      return max - std::sqrt ( (1 - u) * (max - min) * (max - mode) );
     }
 }
 
-uint32_t
-TriangularRandomVariable::GetInteger(uint32_t mean, uint32_t min, uint32_t max)
+uint32_t 
+TriangularRandomVariable::GetInteger (uint32_t mean, uint32_t min, uint32_t max)
 {
-    auto v = static_cast<uint32_t>(GetValue(mean, min, max));
-    NS_LOG_DEBUG("integer value: " << v << " stream: " << GetStream() << " mean: " << mean
-                                   << " min: " << min << " max: " << max);
-    return v;
+  NS_LOG_FUNCTION (this << mean << min << max);
+  return static_cast<uint32_t> ( GetValue (mean, min, max) );
 }
 
-double
-TriangularRandomVariable::GetValue()
+double 
+TriangularRandomVariable::GetValue (void)
 {
-    return GetValue(m_mean, m_min, m_max);
+  NS_LOG_FUNCTION (this);
+  return GetValue (m_mean, m_min, m_max);
+}
+uint32_t 
+TriangularRandomVariable::GetInteger (void)
+{
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue (m_mean, m_min, m_max);
 }
 
 NS_OBJECT_ENSURE_REGISTERED(ZipfRandomVariable);
 
-TypeId
-ZipfRandomVariable::GetTypeId()
+TypeId 
+ZipfRandomVariable::GetTypeId (void)
 {
-    static TypeId tid =
-        TypeId("ns3::ZipfRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<ZipfRandomVariable>()
-            .AddAttribute("N",
-                          "The n value for the Zipf distribution returned by this RNG stream.",
-                          IntegerValue(1),
-                          MakeIntegerAccessor(&ZipfRandomVariable::m_n),
-                          MakeIntegerChecker<uint32_t>())
-            .AddAttribute("Alpha",
-                          "The alpha value for the Zipf distribution returned by this RNG stream.",
-                          DoubleValue(0.0),
-                          MakeDoubleAccessor(&ZipfRandomVariable::m_alpha),
-                          MakeDoubleChecker<double>());
-    return tid;
+  static TypeId tid = TypeId ("ns3::ZipfRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<ZipfRandomVariable> ()
+    .AddAttribute("N", "The n value for the Zipf distribution returned by this RNG stream.",
+		  IntegerValue(1),
+		  MakeIntegerAccessor(&ZipfRandomVariable::m_n),
+		  MakeIntegerChecker<uint32_t>())
+    .AddAttribute("Alpha", "The alpha value for the Zipf distribution returned by this RNG stream.",
+		  DoubleValue(0.0),
+		  MakeDoubleAccessor(&ZipfRandomVariable::m_alpha),
+		  MakeDoubleChecker<double>())
+    ;
+  return tid;
+}
+ZipfRandomVariable::ZipfRandomVariable ()
+{
+  // m_n and m_alpha are initialized after constructor by attributes
+  NS_LOG_FUNCTION (this);
 }
 
-ZipfRandomVariable::ZipfRandomVariable()
+uint32_t 
+ZipfRandomVariable::GetN (void) const
 {
-    // m_n and m_alpha are initialized after constructor by attributes
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
+  return m_n;
+}
+double 
+ZipfRandomVariable::GetAlpha (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_alpha;
 }
 
-uint32_t
-ZipfRandomVariable::GetN() const
+double 
+ZipfRandomVariable::GetValue (uint32_t n, double alpha)
 {
-    return m_n;
-}
-
-double
-ZipfRandomVariable::GetAlpha() const
-{
-    return m_alpha;
-}
-
-double
-ZipfRandomVariable::GetValue(uint32_t n, double alpha)
-{
-    // Calculate the normalization constant c.
-    m_c = 0.0;
-    for (uint32_t i = 1; i <= n; i++)
+  NS_LOG_FUNCTION (this << n << alpha);
+  // Calculate the normalization constant c.
+  m_c = 0.0;
+  for (uint32_t i = 1; i <= n; i++)
     {
-        m_c += (1.0 / std::pow((double)i, alpha));
+      m_c += (1.0 / std::pow ((double)i,alpha));
     }
-    m_c = 1.0 / m_c;
+  m_c = 1.0 / m_c;
 
-    // Get a uniform random variable in [0,1].
-    double u = Peek()->RandU01();
-    if (IsAntithetic())
+  // Get a uniform random variable in [0,1].
+  double u = Peek ()->RandU01 ();
+  if (IsAntithetic ())
     {
-        u = (1 - u);
+      u = (1 - u);
     }
 
-    double sum_prob = 0;
-    double zipf_value = 0;
-    for (uint32_t i = 1; i <= n; i++)
+  double sum_prob = 0,zipf_value = 0;
+  for (uint32_t i = 1; i <= m_n; i++)
     {
-        sum_prob += m_c / std::pow((double)i, alpha);
-        if (sum_prob > u)
+      sum_prob += m_c / std::pow ((double)i,m_alpha);
+      if (sum_prob > u)
         {
-            zipf_value = i;
-            break;
+          zipf_value = i;
+          break;
         }
     }
-    NS_LOG_DEBUG("value: " << zipf_value << " stream: " << GetStream() << " n: " << n
-                           << " alpha: " << alpha);
-    return zipf_value;
+  return zipf_value;
 }
 
-uint32_t
-ZipfRandomVariable::GetInteger(uint32_t n, uint32_t alpha)
+uint32_t 
+ZipfRandomVariable::GetInteger (uint32_t n, uint32_t alpha)
 {
-    NS_LOG_FUNCTION(this << n << alpha);
-    auto v = static_cast<uint32_t>(GetValue(n, alpha));
-    NS_LOG_DEBUG("integer value: " << v << " stream: " << GetStream() << " n: " << n
-                                   << " alpha: " << alpha);
-    return v;
+  NS_LOG_FUNCTION (this << n << alpha);
+  return static_cast<uint32_t> ( GetValue (n, alpha));
 }
 
-double
-ZipfRandomVariable::GetValue()
+double 
+ZipfRandomVariable::GetValue (void)
 {
-    return GetValue(m_n, m_alpha);
+  NS_LOG_FUNCTION (this);
+  return GetValue (m_n, m_alpha);
+}
+uint32_t 
+ZipfRandomVariable::GetInteger (void)
+{
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue (m_n, m_alpha);
 }
 
 NS_OBJECT_ENSURE_REGISTERED(ZetaRandomVariable);
 
-TypeId
-ZetaRandomVariable::GetTypeId()
+TypeId 
+ZetaRandomVariable::GetTypeId (void)
 {
-    static TypeId tid =
-        TypeId("ns3::ZetaRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<ZetaRandomVariable>()
-            .AddAttribute("Alpha",
-                          "The alpha value for the zeta distribution returned by this RNG stream.",
-                          DoubleValue(3.14),
-                          MakeDoubleAccessor(&ZetaRandomVariable::m_alpha),
-                          MakeDoubleChecker<double>());
-    return tid;
+  static TypeId tid = TypeId ("ns3::ZetaRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<ZetaRandomVariable> ()
+    .AddAttribute("Alpha", "The alpha value for the zeta distribution returned by this RNG stream.",
+		  DoubleValue(3.14),
+		  MakeDoubleAccessor(&ZetaRandomVariable::m_alpha),
+		  MakeDoubleChecker<double>())
+    ;
+  return tid;
+}
+ZetaRandomVariable::ZetaRandomVariable ()
+{
+  // m_alpha is initialized after constructor by attributes
+  NS_LOG_FUNCTION (this);
 }
 
-ZetaRandomVariable::ZetaRandomVariable()
+double 
+ZetaRandomVariable::GetAlpha (void) const
 {
-    // m_alpha is initialized after constructor by attributes
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
+  return m_alpha;
 }
 
-double
-ZetaRandomVariable::GetAlpha() const
+double 
+ZetaRandomVariable::GetValue (double alpha)
 {
-    return m_alpha;
-}
+  NS_LOG_FUNCTION (this << alpha);
+  m_b = std::pow (2.0, alpha - 1.0);
 
-double
-ZetaRandomVariable::GetValue(double alpha)
-{
-    m_b = std::pow(2.0, alpha - 1.0);
+  double u, v;
+  double X, T;
+  double test;
 
-    double u;
-    double v;
-    double X;
-    double T;
-    double test;
-
-    do
+  do
     {
-        // Get a uniform random variable in [0,1].
-        u = Peek()->RandU01();
-        if (IsAntithetic())
+      // Get a uniform random variable in [0,1].
+      u = Peek ()->RandU01 ();
+      if (IsAntithetic ())
         {
-            u = (1 - u);
+          u = (1 - u);
         }
 
-        // Get a uniform random variable in [0,1].
-        v = Peek()->RandU01();
-        if (IsAntithetic())
+      // Get a uniform random variable in [0,1].
+      v = Peek ()->RandU01 ();
+      if (IsAntithetic ())
         {
-            v = (1 - v);
+          v = (1 - v);
         }
 
-        X = std::floor(std::pow(u, -1.0 / (alpha - 1.0)));
-        T = std::pow(1.0 + 1.0 / X, alpha - 1.0);
-        test = v * X * (T - 1.0) / (m_b - 1.0);
-    } while (test > (T / m_b));
-    NS_LOG_DEBUG("value: " << X << " stream: " << GetStream() << " alpha: " << alpha);
-    return X;
+      X = std::floor (std::pow (u, -1.0 / (m_alpha - 1.0)));
+      T = std::pow (1.0 + 1.0 / X, m_alpha - 1.0);
+      test = v * X * (T - 1.0) / (m_b - 1.0);
+    }
+  while ( test > (T / m_b) );
+
+  return X;
 }
 
-uint32_t
-ZetaRandomVariable::GetInteger(uint32_t alpha)
+uint32_t 
+ZetaRandomVariable::GetInteger (uint32_t alpha)
 {
-    auto v = static_cast<uint32_t>(GetValue(alpha));
-    NS_LOG_DEBUG("integer value: " << v << " stream: " << GetStream() << " alpha: " << alpha);
-    return v;
+  NS_LOG_FUNCTION (this << alpha);
+  return static_cast<uint32_t> ( GetValue (alpha));
 }
 
-double
-ZetaRandomVariable::GetValue()
+double 
+ZetaRandomVariable::GetValue (void)
 {
-    return GetValue(m_alpha);
+  NS_LOG_FUNCTION (this);
+  return GetValue (m_alpha);
+}
+uint32_t 
+ZetaRandomVariable::GetInteger (void)
+{
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue (m_alpha);
 }
 
 NS_OBJECT_ENSURE_REGISTERED(DeterministicRandomVariable);
 
-TypeId
-DeterministicRandomVariable::GetTypeId()
+TypeId 
+DeterministicRandomVariable::GetTypeId (void)
 {
-    static TypeId tid = TypeId("ns3::DeterministicRandomVariable")
-                            .SetParent<RandomVariableStream>()
-                            .SetGroupName("Core")
-                            .AddConstructor<DeterministicRandomVariable>();
-    return tid;
+  static TypeId tid = TypeId ("ns3::DeterministicRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<DeterministicRandomVariable> ()
+    ;
+  return tid;
 }
-
-DeterministicRandomVariable::DeterministicRandomVariable()
-    : m_count(0),
-      m_next(0),
-      m_data(nullptr)
+DeterministicRandomVariable::DeterministicRandomVariable ()
+  :
+  m_count (0),
+  m_next (0),
+  m_data (0)
 {
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
 }
-
-DeterministicRandomVariable::~DeterministicRandomVariable()
+DeterministicRandomVariable::~DeterministicRandomVariable ()
 {
-    // Delete any values currently set.
-    NS_LOG_FUNCTION(this);
-    if (m_data != nullptr)
-    {
-        delete[] m_data;
-    }
-}
-
-void
-DeterministicRandomVariable::SetValueArray(const std::vector<double>& values)
-{
-    SetValueArray(values.data(), values.size());
+  // Delete any values currently set.
+  NS_LOG_FUNCTION (this);
+  if (m_data != 0)
+  {
+    delete[] m_data;
+  }
 }
 
 void
-DeterministicRandomVariable::SetValueArray(const double* values, std::size_t length)
+DeterministicRandomVariable::SetValueArray (double* values, uint64_t length)
 {
-    NS_LOG_FUNCTION(this << values << length);
-    // Delete any values currently set.
-    if (m_data != nullptr)
-    {
-        delete[] m_data;
-    }
+  NS_LOG_FUNCTION (this << values << length);
+  // Delete any values currently set.
+  if (m_data != 0)
+  {
+    delete[] m_data;
+  }
 
-    // Make room for the values being set.
-    m_data = new double[length];
-    m_count = length;
-    m_next = length;
+  // Make room for the values being set.
+  m_data = new double[length];
+  m_count = length;
+  m_next = length;
 
-    // Copy the values.
-    for (std::size_t i = 0; i < m_count; i++)
+  // Copy the values.
+  for (uint64_t i = 0; i < m_count; i++)
     {
-        m_data[i] = values[i];
+      m_data[i] = values[i];
     }
 }
 
-double
-DeterministicRandomVariable::GetValue()
+double 
+DeterministicRandomVariable::GetValue (void)
 {
-    // Make sure the array has been set.
-    NS_ASSERT(m_count > 0);
+  NS_LOG_FUNCTION (this);
+  // Make sure the array has been set.
+  NS_ASSERT (m_count > 0);
 
-    if (m_next == m_count)
+  if (m_next == m_count)
     {
-        m_next = 0;
+      m_next = 0;
     }
-    double v = m_data[m_next++];
-    NS_LOG_DEBUG("value: " << v << " stream: " << GetStream());
-    return v;
+  return m_data[m_next++];
+}
+
+uint32_t 
+DeterministicRandomVariable::GetInteger (void)
+{
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue ();
 }
 
 NS_OBJECT_ENSURE_REGISTERED(EmpiricalRandomVariable);
 
-TypeId
-EmpiricalRandomVariable::GetTypeId()
+// ValueCDF methods
+EmpiricalRandomVariable::ValueCDF::ValueCDF ()
+  : value (0.0),
+    cdf (0.0)
 {
-    static TypeId tid =
-        TypeId("ns3::EmpiricalRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<EmpiricalRandomVariable>()
-            .AddAttribute("Interpolate",
-                          "Treat the CDF as a smooth distribution and interpolate, "
-                          "default is to treat the CDF as a histogram and sample.",
-                          BooleanValue(false),
-                          MakeBooleanAccessor(&EmpiricalRandomVariable::m_interpolate),
-                          MakeBooleanChecker());
-    return tid;
+  NS_LOG_FUNCTION (this);
+}
+EmpiricalRandomVariable::ValueCDF::ValueCDF (double v, double c)
+  : value (v),
+    cdf (c)
+{
+  NS_LOG_FUNCTION (this << v << c);
+  NS_ASSERT (c >= 0.0 && c <= 1.0);
+}
+EmpiricalRandomVariable::ValueCDF::ValueCDF (const ValueCDF& c)
+  : value (c.value),
+    cdf (c.cdf)
+{
+  NS_LOG_FUNCTION (this << &c);
 }
 
-EmpiricalRandomVariable::EmpiricalRandomVariable()
-    : m_validated(false)
+TypeId 
+EmpiricalRandomVariable::GetTypeId (void)
 {
-    NS_LOG_FUNCTION(this);
+  static TypeId tid = TypeId ("ns3::EmpiricalRandomVariable")
+    .SetParent<RandomVariableStream>()
+    .SetGroupName ("Core")
+    .AddConstructor<EmpiricalRandomVariable> ()
+    ;
+  return tid;
+}
+EmpiricalRandomVariable::EmpiricalRandomVariable ()
+  :
+  m_validated (false)
+{
+  NS_LOG_FUNCTION (this);
 }
 
-bool
-EmpiricalRandomVariable::SetInterpolate(bool interpolate)
+double 
+EmpiricalRandomVariable::GetValue (void)
 {
-    NS_LOG_FUNCTION(this << interpolate);
-    bool prev = m_interpolate;
-    m_interpolate = interpolate;
-    return prev;
-}
-
-bool
-EmpiricalRandomVariable::PreSample(double& value)
-{
-    NS_LOG_FUNCTION(this << value);
-    if (!m_validated)
+  NS_LOG_FUNCTION (this);
+  // Return a value from the empirical distribution
+  // This code based (loosely) on code by Bruce Mah (Thanks Bruce!)
+  if (!m_validated)
     {
-        Validate();
+      Validate ();
     }
 
-    // Get a uniform random variable in [0, 1].
-    double r = Peek()->RandU01();
-    if (IsAntithetic())
+  // Get a uniform random variable in [0,1].
+  double r = Peek ()->RandU01 ();
+  if (IsAntithetic ())
     {
-        r = (1 - r);
+      r = (1 - r);
     }
 
-    value = r;
-    bool valid = false;
-    // check extrema
-    if (r <= m_empCdf.begin()->first)
+  if (r <= m_emp.front ().cdf)
     {
-        value = m_empCdf.begin()->second; // Less than first
-        valid = true;
+      return m_emp.front ().value; // Less than first
     }
-    else if (r >= m_empCdf.rbegin()->first)
+  if (r >= m_emp.back ().cdf)
     {
-        value = m_empCdf.rbegin()->second; // Greater than last
-        valid = true;
+      return m_emp.back ().value;  // Greater than last
     }
-    return valid;
-}
-
-double
-EmpiricalRandomVariable::GetValue()
-{
-    double value;
-    if (PreSample(value))
+  // Binary search
+  std::vector<ValueCDF>::size_type bottom = 0;
+  std::vector<ValueCDF>::size_type top = m_emp.size () - 1;
+  while (1)
     {
-        return value;
-    }
-
-    // value now has the (unused) URNG selector
-    if (m_interpolate)
-    {
-        value = DoInterpolate(value);
-    }
-    else
-    {
-        value = DoSampleCDF(value);
-    }
-    NS_LOG_DEBUG("value: " << value << " stream: " << GetStream());
-    return value;
-}
-
-double
-EmpiricalRandomVariable::DoSampleCDF(double r)
-{
-    NS_LOG_FUNCTION(this << r);
-
-    // Find first CDF that is greater than r
-    auto bound = m_empCdf.upper_bound(r);
-
-    return bound->second;
-}
-
-double
-EmpiricalRandomVariable::Interpolate()
-{
-    NS_LOG_FUNCTION(this);
-
-    double value;
-    if (PreSample(value))
-    {
-        return value;
-    }
-
-    // value now has the (unused) URNG selector
-    value = DoInterpolate(value);
-    return value;
-}
-
-double
-EmpiricalRandomVariable::DoInterpolate(double r)
-{
-    NS_LOG_FUNCTION(this << r);
-
-    // Return a value from the empirical distribution
-    // This code based (loosely) on code by Bruce Mah (Thanks Bruce!)
-
-    // search
-    auto upper = m_empCdf.upper_bound(r);
-    auto lower = std::prev(upper, 1);
-
-    if (upper == m_empCdf.begin())
-    {
-        lower = upper;
-    }
-
-    // Interpolate random value in range [v1..v2) based on [c1 .. r .. c2)
-    double c1 = lower->first;
-    double c2 = upper->first;
-    double v1 = lower->second;
-    double v2 = upper->second;
-
-    double value = (v1 + ((v2 - v1) / (c2 - c1)) * (r - c1));
-    return value;
-}
-
-void
-EmpiricalRandomVariable::CDF(double v, double c)
-{
-    NS_LOG_FUNCTION(this << v << c);
-
-    auto vPrevious = m_empCdf.find(c);
-
-    if (vPrevious != m_empCdf.end())
-    {
-        NS_LOG_WARN("Empirical CDF already has a value " << vPrevious->second << " for CDF " << c
-                                                         << ". Overwriting it with value " << v
-                                                         << ".");
-    }
-
-    m_empCdf[c] = v;
-}
-
-void
-EmpiricalRandomVariable::Validate()
-{
-    NS_LOG_FUNCTION(this);
-
-    if (m_empCdf.empty())
-    {
-        NS_FATAL_ERROR("CDF is not initialized");
-    }
-
-    double vPrev = m_empCdf.begin()->second;
-
-    // Check if values are non-decreasing
-    for (const auto& cdfPair : m_empCdf)
-    {
-        const auto& vCurr = cdfPair.second;
-
-        if (vCurr < vPrev)
-        {
-            NS_FATAL_ERROR("Empirical distribution has decreasing CDF values. Current CDF: "
-                           << vCurr << ", prior CDF: " << vPrev);
+      std::vector<ValueCDF>::size_type c = (top + bottom) / 2;
+      if (r >= m_emp[c].cdf && r < m_emp[c + 1].cdf)
+        { // Found it
+          return Interpolate (m_emp[c].cdf, m_emp[c + 1].cdf,
+                              m_emp[c].value, m_emp[c + 1].value,
+                              r);
         }
-
-        vPrev = vCurr;
-    }
-
-    // Bounds check on CDF endpoints
-    auto firstCdfPair = m_empCdf.begin();
-    auto lastCdfPair = m_empCdf.rbegin();
-
-    if (firstCdfPair->first < 0.0)
-    {
-        NS_FATAL_ERROR("Empirical distribution has invalid first CDF value. CDF: "
-                       << firstCdfPair->first << ", Value: " << firstCdfPair->second);
-    }
-
-    if (lastCdfPair->first > 1.0)
-    {
-        NS_FATAL_ERROR("Empirical distribution has invalid last CDF value. CDF: "
-                       << lastCdfPair->first << ", Value: " << lastCdfPair->second);
-    }
-
-    m_validated = true;
-}
-
-NS_OBJECT_ENSURE_REGISTERED(BinomialRandomVariable);
-
-TypeId
-BinomialRandomVariable::GetTypeId()
-{
-    static TypeId tid =
-        TypeId("ns3::BinomialRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<BinomialRandomVariable>()
-            .AddAttribute("Trials",
-                          "The number of trials.",
-                          IntegerValue(10),
-                          MakeIntegerAccessor(&BinomialRandomVariable::m_trials),
-                          MakeIntegerChecker<uint32_t>(0))
-            .AddAttribute("Probability",
-                          "The probability of success in each trial.",
-                          DoubleValue(0.5),
-                          MakeDoubleAccessor(&BinomialRandomVariable::m_probability),
-                          MakeDoubleChecker<double>(0));
-    return tid;
-}
-
-BinomialRandomVariable::BinomialRandomVariable()
-{
-    // m_trials and m_probability are initialized after constructor by attributes
-    NS_LOG_FUNCTION(this);
-}
-
-double
-BinomialRandomVariable::GetValue(uint32_t trials, double probability)
-{
-    double successes = 0;
-
-    for (uint32_t i = 0; i < trials; ++i)
-    {
-        double v = Peek()->RandU01();
-        if (IsAntithetic())
+      // Not here, adjust bounds
+      if (r < m_emp[c].cdf)
         {
-            v = (1 - v);
+          top    = c - 1;
         }
-
-        if (v <= probability)
+      else
         {
-            successes += 1;
-        }
-    }
-    NS_LOG_DEBUG("value: " << successes << " stream: " << GetStream() << " trials: " << trials
-                           << " probability: " << probability);
-    return successes;
-}
-
-uint32_t
-BinomialRandomVariable::GetInteger(uint32_t trials, uint32_t probability)
-{
-    auto v = static_cast<uint32_t>(GetValue(trials, probability));
-    NS_LOG_DEBUG("integer value: " << v << " stream: " << GetStream() << " trials: " << trials
-                                   << " probability: " << probability);
-    return v;
-}
-
-double
-BinomialRandomVariable::GetValue()
-{
-    return GetValue(m_trials, m_probability);
-}
-
-NS_OBJECT_ENSURE_REGISTERED(BernoulliRandomVariable);
-
-TypeId
-BernoulliRandomVariable::GetTypeId()
-{
-    static TypeId tid =
-        TypeId("ns3::BernoulliRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<BernoulliRandomVariable>()
-            .AddAttribute("Probability",
-                          "The probability of the random variable returning a value of 1.",
-                          DoubleValue(0.5),
-                          MakeDoubleAccessor(&BernoulliRandomVariable::m_probability),
-                          MakeDoubleChecker<double>(0));
-    return tid;
-}
-
-BernoulliRandomVariable::BernoulliRandomVariable()
-{
-    // m_probability is initialized after constructor by attributes
-    NS_LOG_FUNCTION(this);
-}
-
-double
-BernoulliRandomVariable::GetValue(double probability)
-{
-    double v = Peek()->RandU01();
-    if (IsAntithetic())
-    {
-        v = (1 - v);
-    }
-
-    double value = (v <= probability) ? 1.0 : 0.0;
-    NS_LOG_DEBUG("value: " << value << " stream: " << GetStream()
-                           << " probability: " << probability);
-    return value;
-}
-
-uint32_t
-BernoulliRandomVariable::GetInteger(uint32_t probability)
-{
-    auto v = static_cast<uint32_t>(GetValue(probability));
-    NS_LOG_DEBUG("integer value: " << v << " stream: " << GetStream()
-                                   << " probability: " << probability);
-    return v;
-}
-
-double
-BernoulliRandomVariable::GetValue()
-{
-    return GetValue(m_probability);
-}
-
-NS_OBJECT_ENSURE_REGISTERED(LaplacianRandomVariable);
-
-TypeId
-LaplacianRandomVariable::GetTypeId()
-{
-    static TypeId tid =
-        TypeId("ns3::LaplacianRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<LaplacianRandomVariable>()
-            .AddAttribute("Location",
-                          "The location parameter for the Laplacian distribution returned by this "
-                          "RNG stream.",
-                          DoubleValue(0.0),
-                          MakeDoubleAccessor(&LaplacianRandomVariable::m_location),
-                          MakeDoubleChecker<double>())
-            .AddAttribute(
-                "Scale",
-                "The scale parameter for the Laplacian distribution returned by this RNG stream.",
-                DoubleValue(1.0),
-                MakeDoubleAccessor(&LaplacianRandomVariable::m_scale),
-                MakeDoubleChecker<double>())
-            .AddAttribute("Bound",
-                          "The bound on the values returned by this RNG stream.",
-                          DoubleValue(0.0),
-                          MakeDoubleAccessor(&LaplacianRandomVariable::m_bound),
-                          MakeDoubleChecker<double>());
-    return tid;
-}
-
-LaplacianRandomVariable::LaplacianRandomVariable()
-{
-    NS_LOG_FUNCTION(this);
-}
-
-double
-LaplacianRandomVariable::GetLocation() const
-{
-    return m_location;
-}
-
-double
-LaplacianRandomVariable::GetScale() const
-{
-    return m_scale;
-}
-
-double
-LaplacianRandomVariable::GetBound() const
-{
-    return m_bound;
-}
-
-double
-LaplacianRandomVariable::GetValue(double location, double scale, double bound)
-{
-    NS_LOG_FUNCTION(this << location << scale << bound);
-    NS_ABORT_MSG_IF(scale <= 0, "Scale parameter should be larger than 0");
-
-    while (true)
-    {
-        // Get a uniform random variable in [-0.5,0.5].
-        auto v = (Peek()->RandU01() - 0.5);
-        if (IsAntithetic())
-        {
-            v = (1 - v);
-        }
-
-        // Calculate the laplacian random variable.
-        const auto sgn = (v > 0) ? 1 : ((v < 0) ? -1 : 0);
-        const auto r = location - (scale * sgn * std::log(1.0 - (2.0 * std::abs(v))));
-
-        // Use this value if it's acceptable.
-        if (bound == 0.0 || std::fabs(r - location) <= bound)
-        {
-            return r;
+          bottom = c + 1;
         }
     }
 }
 
-uint32_t
-LaplacianRandomVariable::GetInteger(uint32_t location, uint32_t scale, uint32_t bound)
+uint32_t 
+EmpiricalRandomVariable::GetInteger (void)
 {
-    NS_LOG_FUNCTION(this << location << scale << bound);
-    return static_cast<uint32_t>(GetValue(location, scale, bound));
+  NS_LOG_FUNCTION (this);
+  return (uint32_t)GetValue ();
 }
 
-double
-LaplacianRandomVariable::GetValue()
-{
-    NS_LOG_FUNCTION(this);
-    return GetValue(m_location, m_scale, m_bound);
+void EmpiricalRandomVariable::CDF (double v, double c)
+{ // Add a new empirical datapoint to the empirical cdf
+  // NOTE.   These MUST be inserted in non-decreasing order
+  NS_LOG_FUNCTION (this << v << c);
+  m_emp.push_back (ValueCDF (v, c));
 }
 
-double
-LaplacianRandomVariable::GetVariance(double scale)
+void EmpiricalRandomVariable::Validate ()
 {
-    NS_LOG_FUNCTION(scale);
-    return 2.0 * std::pow(scale, 2.0);
-}
-
-double
-LaplacianRandomVariable::GetVariance() const
-{
-    return GetVariance(m_scale);
-}
-
-NS_OBJECT_ENSURE_REGISTERED(LargestExtremeValueRandomVariable);
-
-TypeId
-LargestExtremeValueRandomVariable::GetTypeId()
-{
-    static TypeId tid =
-        TypeId("ns3::LargestExtremeValueRandomVariable")
-            .SetParent<RandomVariableStream>()
-            .SetGroupName("Core")
-            .AddConstructor<LargestExtremeValueRandomVariable>()
-            .AddAttribute("Location",
-                          "The location parameter for the Largest Extreme Value distribution "
-                          "returned by this RNG stream.",
-                          DoubleValue(0.0),
-                          MakeDoubleAccessor(&LargestExtremeValueRandomVariable::m_location),
-                          MakeDoubleChecker<double>())
-            .AddAttribute("Scale",
-                          "The scale parameter for the Largest Extreme Value distribution "
-                          "returned by this RNG stream.",
-                          DoubleValue(1.0),
-                          MakeDoubleAccessor(&LargestExtremeValueRandomVariable::m_scale),
-                          MakeDoubleChecker<double>());
-    return tid;
-}
-
-LargestExtremeValueRandomVariable::LargestExtremeValueRandomVariable()
-{
-    NS_LOG_FUNCTION(this);
-}
-
-double
-LargestExtremeValueRandomVariable::GetLocation() const
-{
-    return m_location;
-}
-
-double
-LargestExtremeValueRandomVariable::GetScale() const
-{
-    return m_scale;
-}
-
-double
-LargestExtremeValueRandomVariable::GetValue(double location, double scale)
-{
-    NS_LOG_FUNCTION(this << location << scale);
-    NS_ABORT_MSG_IF(scale <= 0, "Scale parameter should be larger than 0");
-
-    // Get a uniform random variable in [0,1].
-    auto v = Peek()->RandU01();
-    if (IsAntithetic())
+  NS_LOG_FUNCTION (this);
+  if (m_emp.empty ())
     {
-        v = (1 - v);
+      NS_FATAL_ERROR ("CDF is not initialized");
     }
-
-    // Calculate the largest extreme value random variable.
-    const auto t = std::log(v) * (-1.0);
-    const auto r = location - (scale * std::log(t));
-
-    return r;
+  ValueCDF prior = m_emp[0];
+  for (std::vector<ValueCDF>::size_type i = 0; i < m_emp.size (); ++i)
+    {
+      ValueCDF& current = m_emp[i];
+      if (current.value < prior.value || current.cdf < prior.cdf)
+        { // Error
+          std::cerr << "Empirical Dist error,"
+               << " current value " << current.value
+               << " prior value "   << prior.value
+               << " current cdf "   << current.cdf
+                    << " prior cdf "     << prior.cdf << std::endl;
+          NS_FATAL_ERROR ("Empirical Dist error");
+        }
+      prior = current;
+    }
+  if (prior.cdf != 1.0)
+    {
+      NS_FATAL_ERROR ("CDF does not cover the whole distribution");
+    }
+  m_validated = true;
 }
 
-uint32_t
-LargestExtremeValueRandomVariable::GetInteger(uint32_t location, uint32_t scale)
-{
-    NS_LOG_FUNCTION(this << location << scale);
-    return static_cast<uint32_t>(GetValue(location, scale));
-}
-
-double
-LargestExtremeValueRandomVariable::GetValue()
-{
-    NS_LOG_FUNCTION(this);
-    return GetValue(m_location, m_scale);
-}
-
-double
-LargestExtremeValueRandomVariable::GetMean(double location, double scale)
-{
-    NS_LOG_FUNCTION(location << scale);
-    return (location + (scale * std::numbers::egamma));
-}
-
-double
-LargestExtremeValueRandomVariable::GetMean() const
-{
-    return GetMean(m_location, m_scale);
-}
-
-double
-LargestExtremeValueRandomVariable::GetVariance(double scale)
-{
-    NS_LOG_FUNCTION(scale);
-    return std::pow((scale * std::numbers::pi), 2) / 6.0;
-}
-
-double
-LargestExtremeValueRandomVariable::GetVariance() const
-{
-    return GetVariance(m_scale);
+double EmpiricalRandomVariable::Interpolate (double c1, double c2,
+                                           double v1, double v2, double r)
+{ // Interpolate random value in range [v1..v2) based on [c1 .. r .. c2)
+  NS_LOG_FUNCTION (this << c1 << c2 << v1 << v2 << r);
+  return (v1 + ((v2 - v1) / (c2 - c1)) * (r - c1));
 }
 
 } // namespace ns3

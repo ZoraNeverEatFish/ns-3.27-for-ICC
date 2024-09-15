@@ -1,7 +1,19 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2014 Universita' degli Studi di Napoli "Federico II"
  *
- * SPDX-License-Identifier: GPL-2.0-only
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Stefano Avallone <stefano.avallone@unina.it>
  */
@@ -9,36 +21,33 @@
 #ifndef WIFI_TX_CURRENT_MODEL_H
 #define WIFI_TX_CURRENT_MODEL_H
 
-#include "wifi-units.h"
-
 #include "ns3/object.h"
 
-namespace ns3
-{
+namespace ns3 {
 
 /**
  * \ingroup energy
  *
- * \brief Model the transmit current as a function of the transmit power and mode
+ * \brief Modelize the transmit current as a function of the transmit power and mode
  *
  */
 class WifiTxCurrentModel : public Object
 {
-  public:
-    /**
-     * \brief Get the type ID.
-     * \return the object TypeId
-     */
-    static TypeId GetTypeId();
+public:
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
+  static TypeId GetTypeId (void);
 
-    WifiTxCurrentModel();
-    ~WifiTxCurrentModel() override;
+  WifiTxCurrentModel ();
+  virtual ~WifiTxCurrentModel ();
 
-    /**
-     * \param txPower the nominal TX power
-     * \returns the transmit current
-     */
-    virtual ampere_u CalcTxCurrent(dBm_u txPower) const = 0;
+  /**
+   * \param txPowerDbm the nominal tx power in dBm
+   * \returns the transmit current (in Ampere)
+   */
+  virtual double CalcTxCurrent (double txPowerDbm) const = 0;
 };
 
 /**
@@ -67,29 +76,66 @@ class WifiTxCurrentModel : public Object
  * "On the Effects of Transmit Power Control on the Energy Consumption of WiFi Network Cards",
  * Proceedings of ICST QShine 2009, pp. 463--475
  *
- * If the TX current corresponding to a given nominal transmit power is known, the efficiency
+ * If the tx current corresponding to a given nominal transmit power is known, the efficiency
  * of the power amplifier is given by the above formula:
  * \f$ \eta = \frac{P_{tx}}{(I_{tx}-I_{idle})\cdot V} \f$
  *
  */
 class LinearWifiTxCurrentModel : public WifiTxCurrentModel
 {
-  public:
-    /**
-     * \brief Get the type ID.
-     * \return the object TypeId
-     */
-    static TypeId GetTypeId();
+public:
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
+  static TypeId GetTypeId (void);
 
-    LinearWifiTxCurrentModel();
-    ~LinearWifiTxCurrentModel() override;
+  LinearWifiTxCurrentModel ();
+  virtual ~LinearWifiTxCurrentModel ();
 
-    ampere_u CalcTxCurrent(dBm_u txPower) const override;
+  /**
+   * \param eta (dimension-less)
+   *
+   * Set the power amplifier efficiency.
+   */
+  void SetEta (double eta);
 
-  private:
-    double m_eta;           ///< ETA
-    volt_u m_voltage;       ///< voltage
-    ampere_u m_idleCurrent; ///< idle current
+  /**
+   * \param voltage (Volts)
+   *
+   * Set the supply voltage.
+   */
+  void SetVoltage (double voltage);
+
+  /**
+   * \param idleCurrent (Ampere)
+   *
+   * Set the current in the IDLE state.
+   */
+  void SetIdleCurrent (double idleCurrent);
+
+  /**
+   * \return the power amplifier efficiency.
+   */
+  double GetEta (void) const;
+
+  /**
+   * \return the supply voltage.
+   */
+  double GetVoltage (void) const;
+
+  /**
+   * \return the current in the IDLE state.
+   */
+  double GetIdleCurrent (void) const;
+
+  double CalcTxCurrent (double txPowerDbm) const;
+
+
+private:
+  double m_eta; ///< ETA
+  double m_voltage; ///< voltage
+  double m_idleCurrent; ///< idle current
 };
 
 } // namespace ns3

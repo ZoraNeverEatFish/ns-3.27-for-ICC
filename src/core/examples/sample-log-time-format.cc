@@ -1,5 +1,17 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * SPDX-License-Identifier: GPL-2.0-only
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 /**
@@ -13,10 +25,10 @@
  * Example program that demonstrates how to replace the time printer.
  *
  * This program creates a sample object and schedules some methods to
- * occur at future times.  When run with no arguments, it prints out
+ * occur at future times.  When run with no arguments, it prints out 
  * something like this:
  * \code
- * $ ./ns3 run sample-log-time-format
+ * $ ./waf --run sample-log-time-format
  * RandomVariableStream:RandomVariableStream(0x184e3a0)
  * RandomVariableStream:UniformRandomVariable(0x184e3a0)
  * RandomVariableStream:SetStream(0x184e3a0, -1)
@@ -44,11 +56,11 @@
  * once the simulator object is instantiated (after Simulator::Run ()
  * is called).
  *
- * To change the format, one can schedule (at simulation time 0) a
+ * To change the format, one can schedule (at simulation time 0) a 
  * replacement function for printing time.  This can be demonstrated
  * by setting the 'replace-time-printer' parameter to true:
  * \code
- * ./ns3 run 'sample-log-time-format --replaceTimePrinter=1'
+ * ./waf --run 'sample-log-time-format --replaceTimePrinter=1'
  * RandomVariableStream:RandomVariableStream(0x15fb080)
  * RandomVariableStream:UniformRandomVariable(0x15fb080)
  * RandomVariableStream:SetStream(0x15fb080, -1)
@@ -65,96 +77,81 @@
  * (which was the default for ns-3 versions 3.26 and earlier).
  *
  * In addition, the 'resolution' program argument allows one to experiment
- * with changing ns-3's time resolution from its default of Time::NS, such
+ * with changing ns-3's time resolution from its default of Time::NS, such 
  * as Time::PS or Time::FS; the precision changes accordingly.
  *
- * The maximum useful precision is 20 decimal digits, since Time is
+ * The maximum useful precision is 20 decimal digits, since Time is 
  * signed 64 bits.
  */
 
+#include "ns3/simulator.h"
+#include "ns3/nstime.h"
 #include "ns3/command-line.h"
 #include "ns3/log.h"
-#include "ns3/nstime.h"
 #include "ns3/random-variable-stream.h"
-#include "ns3/simulator.h"
-
-#include <map>
 
 using namespace ns3;
 
-namespace
-{
-
+namespace {
+  
 /**
- * Pre-ns-3.26 TimePrinter equivalent (was called LogTimePrinter).
- *
+ * Pre-ns-3.26 LogTimePrinter equivalent.
+ * 
  * Prior to ns-3.26, the time printer used default C++ iostream precision
  * This function sets it back to the format used before ns-3.26
  *
  * \param [in] os The stream to print on.
  */
 void
-ReplacementTimePrinter(std::ostream& os)
+ReplacementTimePrinter (std::ostream &os)
 {
-    os << Simulator::Now().GetSeconds() << "s";
+  os << Simulator::Now ().GetSeconds () << "s";
 }
 
 /** Set ReplacementTimePrinter as the time printer for log messages. */
 void
-ReplaceTimePrinter()
+ReplaceTimePrinter (void)
 {
-    std::cout << "Replacing time printer function after Simulator::Run ()" << std::endl;
-    LogSetTimePrinter(&ReplacementTimePrinter);
+  std::cout << "Replacing time printer function after Simulator::Run ()" << std::endl;
+  LogSetTimePrinter (&ReplacementTimePrinter);
 }
 
-} // unnamed namespace
 
-int
-main(int argc, char* argv[])
+}  // unnamed namespace
+
+
+int main (int argc, char *argv[])
 {
-    bool replaceTimePrinter = false;
-    std::string resolution = "Time::NS";
-    LogComponentEnable("RandomVariableStream", LOG_LEVEL_ALL);
-    LogComponentEnableAll(LOG_PREFIX_TIME);
+  bool replaceTimePrinter = false;
+  std::string resolution = "Time::NS";
+  LogComponentEnable ("RandomVariableStream", LOG_LEVEL_ALL);
+  LogComponentEnableAll (LOG_PREFIX_TIME);
 
-    std::map<std::string, Time::Unit> resolutionMap = {
-        {"Time::US", Time::US},
-        {"Time::NS", Time::NS},
-        {"Time::PS", Time::PS},
-        {"Time::FS", Time::FS},
-    };
+  std::map<std::string, Time::Unit> resolutionMap = {{"Time::US", Time::US}, {"Time::NS", Time::NS}, {"Time::PS", Time::PS}, {"Time::FS", Time::FS}};
 
-    CommandLine cmd(__FILE__);
-    cmd.AddValue("replaceTimePrinter", "replace time printing function", replaceTimePrinter);
-    cmd.AddValue("resolution", "time resolution", resolution);
-    cmd.Parse(argc, argv);
+  CommandLine cmd;
+  cmd.AddValue ("replaceTimePrinter", "replace time printing function", replaceTimePrinter);
+  cmd.AddValue ("resolution", "time resolution", resolution);
+  cmd.Parse (argc, argv);
 
-    auto search = resolutionMap.find(resolution);
-    if (search != resolutionMap.end())
+  auto search = resolutionMap.find (resolution);
+  if (search != resolutionMap.end ())
     {
-        Time::SetResolution(search->second);
+      Time::SetResolution (search->second);
     }
 
-    Ptr<UniformRandomVariable> uniformRv = CreateObject<UniformRandomVariable>();
+  Ptr<UniformRandomVariable> uniformRv = CreateObject<UniformRandomVariable> ();
 
-    if (replaceTimePrinter)
+  if (replaceTimePrinter)
     {
-        Simulator::Schedule(Seconds(0), &ReplaceTimePrinter);
+      Simulator::Schedule (Seconds (0), &ReplaceTimePrinter);
     }
 
-    Simulator::Schedule(NanoSeconds(1), &UniformRandomVariable::SetAntithetic, uniformRv, false);
-    Simulator::Schedule(NanoSeconds(123), &UniformRandomVariable::SetAntithetic, uniformRv, false);
-    Simulator::Schedule(NanoSeconds(123456),
-                        &UniformRandomVariable::SetAntithetic,
-                        uniformRv,
-                        false);
-    Simulator::Schedule(NanoSeconds(123456789),
-                        &UniformRandomVariable::SetAntithetic,
-                        uniformRv,
-                        false);
+  Simulator::Schedule (NanoSeconds (1), &UniformRandomVariable::SetAntithetic, uniformRv, false);
+  Simulator::Schedule (NanoSeconds (123), &UniformRandomVariable::SetAntithetic, uniformRv, false);
+  Simulator::Schedule (NanoSeconds (123456), &UniformRandomVariable::SetAntithetic, uniformRv, false);
+  Simulator::Schedule (NanoSeconds (123456789), &UniformRandomVariable::SetAntithetic, uniformRv, false);
 
-    Simulator::Run();
-    Simulator::Destroy();
-
-    return 0;
+  Simulator::Run ();
+  Simulator::Destroy ();
 }

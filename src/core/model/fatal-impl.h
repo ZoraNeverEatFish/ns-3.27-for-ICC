@@ -1,7 +1,19 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2010 NICTA
  *
- * SPDX-License-Identifier: GPL-2.0-only
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Quincy Tse <quincy.tse@nicta.com.au>
  */
@@ -23,15 +35,13 @@
  * \defgroup fatalimpl Fatal Implementation.
  */
 
-namespace ns3
-{
+namespace ns3 {
 
 /**
  * \ingroup fatalimpl
  * \brief Implementation namespace for fatal error handlers.
  */
-namespace FatalImpl
-{
+namespace FatalImpl {
 
 /**
  * \ingroup fatalimpl
@@ -46,7 +56,7 @@ namespace FatalImpl
  *
  * \param [in] stream The stream to be flushed on abnormal exit.
  */
-void RegisterStream(std::ostream* stream);
+void RegisterStream (std::ostream* stream);
 
 /**
  * \ingroup fatalimpl
@@ -61,7 +71,7 @@ void RegisterStream(std::ostream* stream);
  *
  * \param [in] stream The stream to be unregistered.
  */
-void UnregisterStream(std::ostream* stream);
+void UnregisterStream (std::ostream* stream);
 
 /**
  * \ingroup fatalimpl
@@ -81,9 +91,9 @@ void UnregisterStream(std::ostream* stream);
  *
  * DO NOT call this function until the program is ready to crash.
  */
-void FlushStreams();
+void FlushStreams (void);
 
-} // namespace FatalImpl
-} // namespace ns3
+} //FatalImpl
+} //ns3
 
 #endif

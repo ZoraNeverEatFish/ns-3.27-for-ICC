@@ -51,9 +51,9 @@ Queue is an abstract base class and is subclassed for specific scheduling and
 drop policies. Subclasses need to define the following public methods:
 
 * ``bool Enqueue (Ptr<Item> item)``:  Enqueue a packet
-* ``Ptr<Item> Dequeue ()``:  Dequeue a packet
-* ``Ptr<Item> Remove ()``:  Remove a packet
-* ``Ptr<const Item> Peek ()``:  Peek a packet
+* ``Ptr<Item> Dequeue (void)``:  Dequeue a packet
+* ``Ptr<Item> Remove (void)``:  Remove a packet
+* ``Ptr<const Item> Peek (void)``:  Peek a packet
 
 The Enqueue method does not allow to store a packet if the queue capacity is exceeded.
 Subclasses may also define specialized public methods. For instance, the
@@ -68,7 +68,13 @@ There are five trace sources that may be hooked:
 * ``DropBeforeEnqueue``
 * ``DropAfterDequeue``
 
-Also, the QueueBase class defines two additional trace sources:
+Also, the QueueBase class defines three attributes:
+
+* ``Mode``: whether the capacity of the queue is measured in packets or bytes
+* ``MaxPackets``: the maximum number of packets accepted by the queue in packet mode
+* ``MaxBytes``: the maximum number of bytes accepted by the queue in byte mode
+
+and two trace sources:
 
 * ``PacketsInQueue``
 * ``BytesInQueue``
@@ -78,10 +84,6 @@ DropTail
 
 This is a basic first-in-first-out (FIFO) queue that performs a tail drop
 when the queue is full.
-
-The DropTailQueue class defines one attribute:
-
-* ``MaxSize``: the maximum queue size
 
 Usage
 *****
@@ -96,21 +98,22 @@ the queue type and attributes from the helper, such as this example:
 
   PointToPointHelper p2p;
 
-  p2p.SetQueue("ns3::DropTailQueue");
-  p2p.SetDeviceAttribute("DataRate", StringValue("10Mbps"));
-  p2p.SetChannelAttribute("Delay", StringValue("2ms"));
-  NetDeviceContainer devn0n2 = p2p.Install(n0n2);
+  p2p.SetQueue ("ns3::DropTailQueue");
+  p2p.SetDeviceAttribute ("DataRate", StringValue ("10Mbps"));
+  p2p.SetChannelAttribute ("Delay", StringValue ("2ms"));
+  NetDeviceContainer devn0n2 = p2p.Install (n0n2);
 
-  p2p.SetQueue("ns3::DropTailQueue");
-  p2p.SetDeviceAttribute("DataRate", StringValue("10Mbps"));
-  p2p.SetChannelAttribute("Delay", StringValue("3ms"));
-  NetDeviceContainer devn1n2 = p2p.Install(n1n2);
+  p2p.SetQueue ("ns3::DropTailQueue");
+  p2p.SetDeviceAttribute ("DataRate", StringValue ("10Mbps"));
+  p2p.SetChannelAttribute ("Delay", StringValue ("3ms"));
+  NetDeviceContainer devn1n2 = p2p.Install (n1n2);
 
-  p2p.SetQueue("ns3::DropTailQueue",
-               "MaxSize", StringValue("50p"));
-  p2p.SetDeviceAttribute("DataRate", StringValue(linkDataRate));
-  p2p.SetChannelAttribute("Delay", StringValue(linkDelay));
-  NetDeviceContainer devn2n3 = p2p.Install(n2n3);
+  p2p.SetQueue ("ns3::DropTailQueue",
+                "LinkBandwidth", StringValue (linkDataRate),
+                "LinkDelay", StringValue (linkDelay));
+  p2p.SetDeviceAttribute ("DataRate", StringValue (linkDataRate));
+  p2p.SetChannelAttribute ("Delay", StringValue (linkDelay));
+  NetDeviceContainer devn2n3 = p2p.Install (n2n3);
 
 Please note that the SetQueue method of the PointToPointHelper class allows
 to specify "ns3::DropTailQueue" instead of "ns3::DropTailQueue<Packet>". The
@@ -120,18 +123,18 @@ Output
 ======
 
 The ns-3 ascii trace helpers used by many of the NetDevices will hook
-the Enqueue, Dequeue, and Drop traces of these queues and print out
+the Enqueue, Dequeue, and Drop traces of these queues and print out 
 trace statements, such as the following from ``examples/udp/udp-echo.cc``:
 
 .. sourcecode:: text
 
-  + 2 /NodeList/0/DeviceList/1/$ns3::CsmaNetDevice/TxQueue/Enqueue ns3::EthernetHeader
-  ( length/type=0x806, source=00:00:00:00:00:01, destination=ff:ff:ff:ff:ff:ff)
-  ns3::ArpHeader (request source mac: 00-06-00:00:00:00:00:01 source ipv4: 10.1.1.1
+  + 2 /NodeList/0/DeviceList/1/$ns3::CsmaNetDevice/TxQueue/Enqueue ns3::EthernetHeader 
+  ( length/type=0x806, source=00:00:00:00:00:01, destination=ff:ff:ff:ff:ff:ff) 
+  ns3::ArpHeader (request source mac: 00-06-00:00:00:00:00:01 source ipv4: 10.1.1.1 
   dest ipv4: 10.1.1.2) Payload (size=18) ns3::EthernetTrailer (fcs=0)
-  - 2 /NodeList/0/DeviceList/1/$ns3::CsmaNetDevice/TxQueue/Dequeue ns3::EthernetHeader
-  ( length/type=0x806, source=00:00:00:00:00:01, destination=ff:ff:ff:ff:ff:ff)
-  ns3::ArpHeader (request source mac: 00-06-00:00:00:00:00:01 source ipv4: 10.1.1.1
+  - 2 /NodeList/0/DeviceList/1/$ns3::CsmaNetDevice/TxQueue/Dequeue ns3::EthernetHeader 
+  ( length/type=0x806, source=00:00:00:00:00:01, destination=ff:ff:ff:ff:ff:ff) 
+  ns3::ArpHeader (request source mac: 00-06-00:00:00:00:00:01 source ipv4: 10.1.1.1 
   dest ipv4: 10.1.1.2) Payload (size=18) ns3::EthernetTrailer (fcs=0)
 
 which shows an enqueue "+" and dequeue "-" event at time 2 seconds.
@@ -142,5 +145,6 @@ these trace sources.
 Examples
 ========
 
-The drop-tail queue is used in several examples, such as
+The drop-tail queue is used in several examples, such as 
 ``examples/udp/udp-echo.cc``.
+

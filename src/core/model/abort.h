@@ -1,7 +1,19 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2008 INRIA, 2010 NICTA
  *
- * SPDX-License-Identifier: GPL-2.0-only
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author:  Original author unknown
  *          Quincy Tse <quincy.tse@nicta.com.au>
@@ -35,12 +47,12 @@
  *
  * \see NS_FATAL_ERROR
  */
-#define NS_ABORT_MSG(msg)                                                                          \
-    do                                                                                             \
-    {                                                                                              \
-        std::cerr << "aborted. ";                                                                  \
-        NS_FATAL_ERROR(msg);                                                                       \
-    } while (false)
+#define NS_ABORT_MSG(msg)                                              \
+  do {                                                                 \
+      std::cerr << "aborted. ";                                        \
+      NS_FATAL_ERROR (msg);                                            \
+  } while (false)
+
 
 /**
  * \ingroup fatal
@@ -62,14 +74,13 @@
  * This macro is enabled unconditionally in all builds,
  * including debug and optimized builds.
  */
-#define NS_ABORT_IF(cond)                                                                          \
-    do                                                                                             \
-    {                                                                                              \
-        if (cond)                                                                                  \
-        {                                                                                          \
-            std::cerr << "aborted. cond=\"" << #cond << ", ";                                      \
-            NS_FATAL_ERROR_NO_MSG();                                                               \
-        }                                                                                          \
+#define NS_ABORT_IF(cond)                                              \
+  do {                                                                 \
+    if (cond)                                                          \
+      {                                                                \
+        std::cerr << "aborted. cond=\"" << # cond << ", ";             \
+        NS_FATAL_ERROR_NO_MSG ();                                      \
+      }                                                                \
     } while (false)
 
 /**
@@ -94,15 +105,14 @@
  * This macro is enabled unconditionally in all builds,
  * including debug and optimized builds.
  */
-#define NS_ABORT_MSG_IF(cond, msg)                                                                 \
-    do                                                                                             \
-    {                                                                                              \
-        if (cond)                                                                                  \
-        {                                                                                          \
-            std::cerr << "aborted. cond=\"" << #cond << "\", ";                                    \
-            NS_FATAL_ERROR(msg);                                                                   \
-        }                                                                                          \
-    } while (false)
+#define NS_ABORT_MSG_IF(cond, msg)                                     \
+  do {                                                                 \
+    if (cond)                                                          \
+      {                                                                \
+        std::cerr << "aborted. cond=\"" << # cond << "\", ";           \
+        NS_FATAL_ERROR (msg);                                          \
+      }                                                                \
+  } while (false)
 
 /**
  * \ingroup fatal
@@ -115,7 +125,8 @@
  *
  * \see NS_ABORT_IF
  */
-#define NS_ABORT_UNLESS(cond) NS_ABORT_IF(!(cond))
+#define NS_ABORT_UNLESS(cond)                                          \
+  NS_ABORT_IF (!(cond))
 
 /**
  * \ingroup fatal
@@ -130,6 +141,7 @@
  *
  * \see NS_ABORT_MSG_IF
  */
-#define NS_ABORT_MSG_UNLESS(cond, msg) NS_ABORT_MSG_IF(!(cond), msg)
+#define NS_ABORT_MSG_UNLESS(cond, msg)                                 \
+  NS_ABORT_MSG_IF (!(cond),msg)
 
 #endif /* NS3_ABORT_H */

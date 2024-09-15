@@ -1,7 +1,20 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2010 INRIA
  *
- * SPDX-License-Identifier: GPL-2.0-only
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
  */
 
 #ifndef INT64X64_H
@@ -11,13 +24,13 @@
 
 // Order is important here, as it determines which implementation
 // will generate doxygen API docs.  This order mimics the
-// selection logic in CMakeLists.txt, so we generate docs from the
+// selection logic in wscript, so we generate docs from the
 // implementation actually chosen by the configuration.
-#if defined(INT64X64_USE_128) && !defined(PYTHON_SCAN)
+#if defined (INT64X64_USE_128) && !defined (PYTHON_SCAN)
 #include "int64x64-128.h"
-#elif defined(INT64X64_USE_CAIRO) && !defined(PYTHON_SCAN)
+#elif defined (INT64X64_USE_CAIRO) && !defined (PYTHON_SCAN)
 #include "int64x64-cairo.h"
-#elif defined(INT64X64_USE_DOUBLE) || defined(PYTHON_SCAN)
+#elif defined (INT64X64_USE_DOUBLE) || defined (PYTHON_SCAN)
 #include "int64x64-double.h"
 #endif
 
@@ -29,8 +42,7 @@
  * Declaration of the ns3::int64x64_t type and associated operators.
  */
 
-namespace ns3
-{
+namespace ns3 {
 
 /**
  * \ingroup core
@@ -57,113 +69,83 @@ namespace ns3
  *   Comparison  | `==`, `!=`, `<`, `<=`, `>`, `>=`
  *   Unary       | `+`, `-`, `!`
  */
-
+  
 /**
  * \ingroup highprec
  * \class int64x64_t
- *
+ * 
  * High precision numerical type, implementing Q64.64 fixed precision.
  */
+
 
 /**
  * \ingroup highprec
  * Addition operator.
- * \param [in] lhs Left hand argument
- * \param [in] rhs Right hand argument
- * \return The result of the operator.
  */
-inline int64x64_t
-operator+(const int64x64_t& lhs, const int64x64_t& rhs)
+inline
+int64x64_t operator + (const int64x64_t & lhs, const int64x64_t & rhs)
 {
-    int64x64_t tmp = lhs;
-    tmp += rhs;
-    return tmp;
+  int64x64_t tmp = lhs;
+  tmp += rhs;
+  return tmp;
 }
-
 /**
  * \ingroup highprec
  * Subtraction operator.
- * \param [in] lhs Left hand argument
- * \param [in] rhs Right hand argument
- * \return The result of the operator.
  */
-inline int64x64_t
-operator-(const int64x64_t& lhs, const int64x64_t& rhs)
+inline
+int64x64_t operator - (const int64x64_t & lhs, const int64x64_t & rhs)
 {
-    int64x64_t tmp = lhs;
-    tmp -= rhs;
-    return tmp;
+  int64x64_t tmp = lhs;
+  tmp -= rhs;
+  return tmp;
 }
-
 /**
  * \ingroup highprec
  * Multiplication operator.
- * \param [in] lhs Left hand argument
- * \param [in] rhs Right hand argument
- * \return The result of the operator.
  */
-inline int64x64_t
-operator*(const int64x64_t& lhs, const int64x64_t& rhs)
+inline
+int64x64_t operator * (const int64x64_t & lhs, const int64x64_t & rhs)
 {
-    int64x64_t tmp = lhs;
-    tmp *= rhs;
-    return tmp;
+  int64x64_t tmp = lhs;
+  tmp *= rhs;
+  return tmp;
 }
-
 /**
  * \ingroup highprec
  * Division operator.
- * \param [in] lhs Left hand argument
- * \param [in] rhs Right hand argument
- * \return The result of the operator.
  */
-inline int64x64_t
-operator/(const int64x64_t& lhs, const int64x64_t& rhs)
+inline
+int64x64_t operator / (const int64x64_t & lhs, const int64x64_t & rhs)
 {
-    int64x64_t tmp = lhs;
-    tmp /= rhs;
-    return tmp;
+  int64x64_t tmp = lhs;
+  tmp /= rhs;
+  return tmp;
 }
-
 /**
  * \ingroup highprec
  * Inequality operator
- * \param [in] lhs Left hand argument
- * \param [in] rhs Right hand argument
- * \return The result of the operator.
  */
-inline bool
-operator!=(const int64x64_t& lhs, const int64x64_t& rhs)
+inline bool operator != (const int64x64_t & lhs, const int64x64_t & rhs)
 {
-    return !(lhs == rhs);
+  return !(lhs == rhs);
 }
-
 /**
  * \ingroup highprec
  * Less or equal operator.
- * \param [in] lhs Left hand argument
- * \param [in] rhs Right hand argument
- * \return The result of the operator.
  */
-inline bool
-operator<=(const int64x64_t& lhs, const int64x64_t& rhs)
+inline bool operator <= (const int64x64_t & lhs, const int64x64_t & rhs)
 {
-    return !(lhs > rhs);
+  return !(lhs > rhs);
 }
-
 /**
  * \ingroup highprec
  * Greater or equal operator.
- * \param [in] lhs Left hand argument
- * \param [in] rhs Right hand argument
- * \return The result of the operator.
  */
-inline bool
-operator>=(const int64x64_t& lhs, const int64x64_t& rhs)
+inline bool operator >= (const int64x64_t & lhs, const int64x64_t & rhs)
 {
-    return !(lhs < rhs);
+  return !(lhs < rhs);
 }
-
 /**
  * \ingroup highprec
  * Output streamer for int64x64_t.
@@ -182,7 +164,7 @@ operator>=(const int64x64_t& lhs, const int64x64_t& rhs)
  * \param [in] value The numerical value to print.
  * \returns The stream.
  */
-std::ostream& operator<<(std::ostream& os, const int64x64_t& value);
+std::ostream &operator << (std::ostream &os, const int64x64_t &value);
 /**
  * \ingroup highprec
  * Input streamer for int64x64_t.
@@ -191,18 +173,17 @@ std::ostream& operator<<(std::ostream& os, const int64x64_t& value);
  * \param [out] value The numerical value to set.
  * \returns The stream.
  */
-std::istream& operator>>(std::istream& is, int64x64_t& value);
+std::istream &operator >> (std::istream &is, int64x64_t &value);
 
 /**
  * \ingroup highprec
  * Absolute value.
  * \param [in] value The value to operate on.
- * \return The absolute value of \pname{value}.
+ * \return The absolute value of \p value.
  */
-inline int64x64_t
-Abs(const int64x64_t& value)
+inline int64x64_t Abs (const int64x64_t &value)
 {
-    return (value < 0) ? -value : value;
+  return (value < 0) ? -value : value;
 }
 
 /**
@@ -213,12 +194,10 @@ Abs(const int64x64_t& value)
  * \param [in] b The second value.
  * \return The smaller of the arguments.
  */
-inline int64x64_t
-Min(const int64x64_t& a, const int64x64_t& b)
+inline int64x64_t Min (const int64x64_t &a, const int64x64_t &b)
 {
-    return (a < b) ? a : b;
+  return (a < b) ? a : b;
 }
-
 /**
  * \ingroup highprec
  * Maximum.
@@ -227,10 +206,9 @@ Min(const int64x64_t& a, const int64x64_t& b)
  * \param [in] b The second value.
  * \return The larger of the arguments.
  */
-inline int64x64_t
-Max(const int64x64_t& a, const int64x64_t& b)
+inline int64x64_t Max (const int64x64_t &a, const int64x64_t &b)
 {
-    return (a > b) ? a : b;
+  return (a > b) ? a : b;
 }
 
 } // namespace ns3

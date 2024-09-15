@@ -1,9 +1,21 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2005,2006 INRIA
  * Copyright (c) 2009 MIRKO BANCHI
  * Copyright (c) 2013 University of Surrey
  *
- * SPDX-License-Identifier: GPL-2.0-only
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Authors: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  *          Mirko Banchi <mk.banchi@gmail.com>
@@ -15,48 +27,54 @@
 
 #include "ns3/tag.h"
 
-namespace ns3
-{
+namespace ns3 {
 
 class Tag;
 
 class SnrTag : public Tag
 {
-  public:
-    /**
-     * \brief Get the type ID.
-     * \return the object TypeId
-     */
-    static TypeId GetTypeId();
+public:
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
+  static TypeId GetTypeId (void);
+  TypeId GetInstanceTypeId (void) const;
 
-    /**
-     * Create a SnrTag with the default SNR 0
-     */
-    SnrTag();
+  /**
+   * Create a SnrTag with the default snr 0
+   */
+  SnrTag ();
 
-    TypeId GetInstanceTypeId() const override;
-    uint32_t GetSerializedSize() const override;
-    void Serialize(TagBuffer i) const override;
-    void Deserialize(TagBuffer i) override;
-    void Print(std::ostream& os) const override;
+  /**
+   * Create a SnrTag with the given snr value
+   * \param snr the given SNR value
+   */
+  SnrTag (double snr);
 
-    /**
-     * Set the SNR to the given value.
-     *
-     * \param snr the value of the SNR to set in linear scale
-     */
-    void Set(double snr);
-    /**
-     * Return the SNR value.
-     *
-     * \return the SNR value in linear scale
-     */
-    double Get() const;
+  uint32_t GetSerializedSize (void) const;
+  void Serialize (TagBuffer i) const;
+  void Deserialize (TagBuffer i);
+  void Print (std::ostream &os) const;
 
-  private:
-    double m_snr; //!< SNR value in linear scale
+  /**
+   * Set the SNR to the given value.
+   *
+   * \param snr the value of the snr to set
+   */
+  void Set (double snr);
+  /**
+   * Return the SNR value.
+   *
+   * \return the SNR value
+   */
+  double Get (void) const;
+
+
+private:
+  double m_snr;  //!< SNR value
 };
 
-} // namespace ns3
+}
 
 #endif /* SNR_TAG_H */

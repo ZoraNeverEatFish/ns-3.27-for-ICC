@@ -1,7 +1,19 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2009 University of Washington
  *
- * SPDX-License-Identifier: GPL-2.0-only
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
 
@@ -31,7 +43,7 @@
 /// Class test suite. \endverbatim
  *
  * Define the class-tests group:
- * \verbatim /// \ingroup module-tests
+ * \verbatim /// \ingroup module-tests 
 /// \defgroup class-tests Class test suite \endverbatim
  *
  * Make sure test.h is included:
@@ -52,20 +64,20 @@ class ClassTestSuite : public TestSuite {...}; \endverbatim
 static ClassTestSuite g_classTestSuite; \endverbatim
  *
  * Finally, close the ingroup and namespace blocks:
- * \verbatim   }  // namespace tests
+ * \verbatim   }  // namespace tests                
 }  // namespace ns3 \endverbatim
 */
+
 
 /**
  * \ingroup core-tests
  * \defgroup testing-example Example use of TestSuite
  */
 
-namespace ns3
-{
+namespace ns3 {
 
-namespace tests
-{
+  namespace tests {
+    
 
 /**
  * \ingroup testing-example
@@ -73,19 +85,19 @@ namespace tests
  */
 class SampleTestCase1 : public TestCase
 {
-  public:
-    /** Constructor. */
-    SampleTestCase1();
-    /** Destructor. */
-    ~SampleTestCase1() override;
+public:
+  /** Constructor. */
+  SampleTestCase1 ();
+  /** Destructor. */
+  virtual ~SampleTestCase1 ();
 
-  private:
-    void DoRun() override;
+private:
+  virtual void DoRun (void);
 };
 
 /** Add some help text to this case to describe what it is intended to test. */
-SampleTestCase1::SampleTestCase1()
-    : TestCase("Sample test case (does nothing)")
+SampleTestCase1::SampleTestCase1 ()
+  : TestCase ("Sample test case (does nothing)")
 {
 }
 
@@ -93,7 +105,7 @@ SampleTestCase1::SampleTestCase1()
  * This destructor does nothing but we include it as a reminder that
  * the test case should clean up after itself
  */
-SampleTestCase1::~SampleTestCase1()
+SampleTestCase1::~SampleTestCase1 ()
 {
 }
 
@@ -102,12 +114,12 @@ SampleTestCase1::~SampleTestCase1()
  * TestCase must implement
  */
 void
-SampleTestCase1::DoRun()
+SampleTestCase1::DoRun (void)
 {
-    // A wide variety of test macros are available in src/core/test.h
-    NS_TEST_ASSERT_MSG_EQ(true, true, "true doesn't equal true for some reason");
-    // Use this one for floating point comparisons
-    NS_TEST_ASSERT_MSG_EQ_TOL(0.01, 0.01, 0.001, "Numbers are not equal within tolerance");
+  // A wide variety of test macros are available in src/core/test.h
+  NS_TEST_ASSERT_MSG_EQ (true, true, "true doesn't equal true for some reason");
+  // Use this one for floating point comparisons
+  NS_TEST_ASSERT_MSG_EQ_TOL (0.01, 0.01, 0.001, "Numbers are not equal within tolerance");
 }
 
 /**
@@ -118,15 +130,15 @@ SampleTestCase1::DoRun()
  */
 class SampleTestSuite : public TestSuite
 {
-  public:
-    /** Constructor. */
-    SampleTestSuite();
+public:
+  /** Constructor. */
+  SampleTestSuite ();
 };
 
-SampleTestSuite::SampleTestSuite()
-    : TestSuite("sample")
+SampleTestSuite::SampleTestSuite ()
+  : TestSuite ("sample")
 {
-    AddTestCase(new SampleTestCase1);
+  AddTestCase (new SampleTestCase1);
 }
 
 // Do not forget to allocate an instance of this TestSuite
@@ -136,6 +148,7 @@ SampleTestSuite::SampleTestSuite()
  */
 static SampleTestSuite g_sampleTestSuite;
 
-} // namespace tests
 
-} // namespace ns3
+  }  // namespace tests
+
+}  // namespace ns3

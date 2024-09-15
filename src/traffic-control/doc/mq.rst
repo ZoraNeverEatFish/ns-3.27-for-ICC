@@ -12,9 +12,6 @@ traffic control API in Linux. The mq scheduler presents device transmission queu
 classes, allowing to attach different queue discs to them, which are grafted to the
 device transmission queues.
 
-Mq is installed by default on multi-queue devices (such as Wifi) with as many FqCodel
-child queue discs as the number of device queues.
-
 Model Description
 *****************
 
@@ -47,10 +44,14 @@ discs:
 .. sourcecode:: cpp
 
   TrafficControlHelper tch;
-  uint16_t handle = tch.SetRootQueueDisc("ns3::MqQueueDisc");
-  TrafficControlHelper::ClassIdList cls = tch.AddQueueDiscClasses(handle, numTxQueues, "ns3::QueueDiscClass");
-  tch.AddChildQueueDiscs(handle, cls, "ns3::FqCoDelQueueDisc");
-  QueueDiscContainer qdiscs = tch.Install(devices);
+  uint16_t handle = tch.SetRootQueueDisc ("ns3::MqQueueDisc");
+  TrafficControlHelper::ClassIdList cls = tch.AddQueueDiscClasses (handle, numTxQueues, "ns3::QueueDiscClass");
+  TrafficControlHelper::HandleList hdl = tch.AddChildQueueDiscs (handle, cls, "ns3::FqCoDelQueueDisc");
+  for (auto h : hdl)
+    {
+      tch.AddPacketFilter (h, "ns3::FqCoDelIpv4PacketFilter");
+    }
+  QueueDiscContainer qdiscs = tch.Install (devices);
 
 Note that the child queue discs attached to the classes do not necessarily have to be of the same type.
 
@@ -70,12 +71,13 @@ The test suite can be run using the following commands:
 
 ::
 
-  $ ./ns3 configure --enable-examples --enable-tests
-  $ ./ns3 build
+  $ ./waf configure --enable-examples --enable-tests
+  $ ./waf build
   $ ./test.py -s ns3-wifi-ac-mapping
 
 or
 
 ::
 
-  $ NS_LOG="WifiAcMappingTest" ./ns3 run "test-runner --suite=ns3-wifi-ac-mapping"
+  $ NS_LOG="WifiAcMappingTest" ./waf --run "test-runner --suite=ns3-wifi-ac-mapping"
+
