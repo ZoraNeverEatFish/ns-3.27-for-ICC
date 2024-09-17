@@ -5,4 +5,5 @@
 !nested-subdir/
 !subdir/
 !scratch-simulator.cc
+!periodcCCEvaDumbbell.cc
 !CMakeLists.txt
