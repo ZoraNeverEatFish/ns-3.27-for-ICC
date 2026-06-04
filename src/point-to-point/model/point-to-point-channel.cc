@@ -106,7 +106,9 @@ PointToPointChannel::Attach (Ptr<PointToPointNetDevice> device)
 			m_RandomDelay=CreateObject<UniformRandomVariable> ();
 		}
 		// ScheduleDelayChange(); 
-    Simulator::Schedule (10*m_delay, &PointToPointChannel::ScheduleDelayChange, this);
+    // Simulator::Schedule (10*m_delay, &PointToPointChannel::ScheduleDelayChange, this);
+    Time tNext (m_interval);  
+	  Simulator::Schedule (tNext, &PointToPointChannel::ScheduleDelayChange, this);
 	}
 		//device->ScheduleRateChange();
 
@@ -226,18 +228,18 @@ void
 PointToPointChannel::ScheduleDelayChange (void)
 {
 
-  // //for heter
+  //for heter
 
-  //   //m_bps=DataRate (value * 1000 * 1000);
-  //   m_link[0].m_src->SetDataRate(DataRate (36 * 1000 * 1000));
-  //   m_link[1].m_src->SetDataRate(DataRate (36 * 1000 * 1000));
-  //   std::cout<<" ScheduleRateChange "<<Simulator::Now().GetSeconds()<<" value "<<8<<std::endl;
+    //m_bps=DataRate (value * 1000 * 1000);
+    m_link[0].m_src->SetDataRate(DataRate (36 * 1000 * 1000));
+    m_link[1].m_src->SetDataRate(DataRate (36 * 1000 * 1000));
+    std::cout<<" ScheduleRateChange "<<Simulator::Now().GetSeconds()<<" value "<<8<<std::endl;
 
-  //   // Simulator::Schedule (Time(Seconds(0.01)), &PointToPointChannel::ScheduleDelayChange_tw, this);
+    // Simulator::Schedule (Time(Seconds(0.01)), &PointToPointChannel::ScheduleDelayChange_tw, this);
 
-  // return ;
+  return ;
 
-  // /////////
+  /////////
 
   if(isDelayChange && poissonDelay)
   {

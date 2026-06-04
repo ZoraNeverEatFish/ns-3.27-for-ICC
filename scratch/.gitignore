@@ -6,4 +6,6 @@
 !subdir/
 !scratch-simulator.cc
 !periodcCCEvaDumbbell.cc
+!periodcCCEvaDumbbellforWavelet.cc
+!iccG-test.cc
 !CMakeLists.txt

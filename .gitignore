@@ -50,3 +50,10 @@ vcpkg/
 
 # Ignore local cache used by e.g. clangd
 .cache/
+
+# Ignore data / build artifacts
+Testdata/
+testdata/
+.claude/
+.lock-waf_linux_build
+.waf3-*

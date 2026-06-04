@@ -22,7 +22,7 @@
 
 using namespace ns3;
 
-std::string fileNameRoot = "./testdata/";
+std::string fileNameRoot = "Testdata/Wavelet/";
 
 void CwndChange (Ptr<OutputStreamWrapper> stream, uint32_t oldCwnd, uint32_t newCwnd)
 {
@@ -101,11 +101,11 @@ TraceQueue (double N)    // Trace changes to the congestion window
   }
 }
 
-// NS_LOG_COMPONENT_DEFINE (ICCtest");
+NS_LOG_COMPONENT_DEFINE ("Copatest");
 int 
 main (int argc, char *argv[])
 {
-  std::cout<<"test"<<std::endl;
+  std::cout<<"testcopa"<<std::endl;
 
   //LogComponentEnable ("TcpSocketBase", LOG_LEVEL_INFO); 
 
@@ -125,17 +125,17 @@ main (int argc, char *argv[])
   int flowNum = 2; 
   double postfix=flowNum;
 
-  bool iscopaModify = true,rand_loss=false,rand_delay=false,rand_BW=false, poisson_delay=false;
+  bool iscopaModify = true,rand_loss=false,rand_delay=false,rand_BW=false;
   bool iftrace=false;
   double rand_interval=5;
-  double Rc=30;
+  double Rc=33;
   double Bd=10;
   int buffer=2000;
   
   double delay=10;
   double cycle=1;
   
-  int CC_mode=1;// 0-newReno 1-PDCC 2-Copa 3-BBR 4-Cubic 5-NewReno(dup) 6-ICC-G
+  int CC_mode=1;// 0-newReno 1-PDCC 2-Copa 3-BBR 4-ADC 5-Cubic 6-NewReno(dup) 7-ICC-G
 
 
 
@@ -145,14 +145,13 @@ main (int argc, char *argv[])
   cmd.AddValue ("runtime", "How long the applications should send data", runtime);
   cmd.AddValue ("delayRB", "Delay on the R--B link, in ms", delay);
   cmd.AddValue ("cycle", "T for PDCC, in s", cycle);
-  cmd.AddValue ("CC_mode", "CC Mode", CC_mode);
+  cmd.AddValue ("CC_mode", "T for PDCC, in s", CC_mode);
   cmd.AddValue ("queuesize", "queue size at R", queuesize);
   cmd.AddValue ("tcpSegmentSize", "TCP segment size", tcpSegmentSize);
   cmd.AddValue ("iscopaModify", "copa Modify", iscopaModify);
   cmd.AddValue ("rand_loss", "randomly changes loss rate", rand_loss);
   cmd.AddValue ("rand_BW", "randomly changes bandwidth", rand_BW);
   cmd.AddValue ("rand_delay", "randomly changes delay", rand_delay);
-  cmd.AddValue ("poisson_delay", "randomly changes delay with poisson distribution", poisson_delay);
   cmd.AddValue ("rand_interval", "randomly changes interval", rand_interval);
   cmd.AddValue ("flowNum", "flow Number", flowNum);
   cmd.AddValue ("lamuda", "flow packet in copa", lamuda);
@@ -167,74 +166,74 @@ main (int argc, char *argv[])
   //delta=1.0/delta;
   
   std::string TCP_PROTOCOL;
-  switch(CC_mode) //chose tested scheme
+  switch(CC_mode)
   {
-    case 0:
-      TCP_PROTOCOL="ns3::TcpNewReno";
-      fileNameRoot+="NewReno/";
+	case 0:
+		TCP_PROTOCOL="ns3::TcpNewReno";
+		fileNameRoot+="NewReno/";
 		break;
-    case 1:
-      TCP_PROTOCOL="ns3::TcpPeriodicDC";
-      fileNameRoot+="PDCC/";
-      LogComponentEnable ("TcpPeriodicDC", LOG_LEVEL_INFO); 
-      Config::SetDefault ("ns3::TcpPeriodicDC::m_lamuda", DoubleValue (lamuda));
-      Config::SetDefault ("ns3::TcpPeriodicDC::Bd", DoubleValue (Bd));
-      Config::SetDefault ("ns3::TcpPeriodicDC::Rc", DoubleValue (12*Rc/100.0));
-      Config::SetDefault ("ns3::TcpPeriodicDC::cycle", DoubleValue (cycle));
-      //Config::SetDefault ("ns3::TcpPeriodicDC::m_lamuda", DoubleValue (6.0));//  /0.02
-      Config::SetDefault ("ns3::TcpPeriodicDC::assitPra", DoubleValue (10));
-      Config::SetDefault ("ns3::TcpSocketBase::Pdcc", BooleanValue (true));
-      //Config::SetDefault ("ns3::PointToPointNetDevice::isRandomChange", BooleanValue (false));
-      break;
-    case 2:
-      TCP_PROTOCOL="ns3::TcpCopa";
-      fileNameRoot+="Copa/";
-      LogComponentEnable ("TcpCopa", LOG_LEVEL_INFO);
-      Config::SetDefault ("ns3::TcpCopa::iscopaModify", BooleanValue (false));
-      break;
-    case 3:
-      TCP_PROTOCOL="ns3::TcpBbr";
-      fileNameRoot+="BBR/";
-      LogComponentEnable ("TcpBbr", LOG_LEVEL_INFO);
-      break;
-    case 4:
-      TCP_PROTOCOL="ns3::TcpCopa";
-      fileNameRoot+="ADC/";
-      LogComponentEnable ("TcpCopa", LOG_LEVEL_INFO);
-      Config::SetDefault ("ns3::TcpCopa::iscopaModify", BooleanValue (true));
-      break;
-    case 5:
-      TCP_PROTOCOL="ns3::TcpCubic";
-      fileNameRoot+="Cubic/";
-      LogComponentEnable ("TcpCubic", LOG_INFO);
-      break;
-    case 6:
-      TCP_PROTOCOL="ns3::TcpNewReno";
-      fileNameRoot+="NewReno/";
-      //LogComponentEnable ("TcpNewReno", LOG_INFO);
-      break;
-    case 7:  //ICC-G (Goertzel, no FFTW)
-      TCP_PROTOCOL="ns3::TcpIccG";
-      fileNameRoot+="ICC-G/";
-      LogComponentEnable ("TcpIccG", LOG_LEVEL_INFO);
-      Config::SetDefault ("ns3::TcpIccG::m_lamuda", DoubleValue (lamuda));
-      Config::SetDefault ("ns3::TcpIccG::Bd", DoubleValue (Bd));
-      Config::SetDefault ("ns3::TcpIccG::Rc", DoubleValue (12*Rc/100.0));
-      Config::SetDefault ("ns3::TcpIccG::cycle", DoubleValue (cycle));
-      Config::SetDefault ("ns3::TcpIccG::assitPra", DoubleValue (10));
-      break;
-    default:
-      TCP_PROTOCOL="ns3::TcpPeriodicDC";
-      fileNameRoot+="PDCC/";
-      LogComponentEnable ("TcpPeriodicDC", LOG_LEVEL_INFO); 
-      Config::SetDefault ("ns3::TcpPeriodicDC::m_lamuda", DoubleValue (lamuda));
-      Config::SetDefault ("ns3::TcpPeriodicDC::Bd", DoubleValue (Bd));
-      Config::SetDefault ("ns3::TcpPeriodicDC::Rc", DoubleValue (12*Rc/100.0));
-      Config::SetDefault ("ns3::TcpPeriodicDC::cycle", DoubleValue (cycle));
-      //Config::SetDefault ("ns3::TcpPeriodicDC::m_lamuda", DoubleValue (6.0));//  /0.02
-      Config::SetDefault ("ns3::TcpPeriodicDC::assitPra", DoubleValue (10));
-      Config::SetDefault ("ns3::TcpSocketBase::Pdcc", BooleanValue (true));
-      // Config::SetDefault ("ns3::PointToPointNetDevice::isRandomChange", BooleanValue (false));
+	case 1:
+		TCP_PROTOCOL="ns3::TcpPeriodicDC";
+		fileNameRoot+="PDCC/";
+		LogComponentEnable ("TcpPeriodicDC", LOG_LEVEL_INFO); 
+		Config::SetDefault ("ns3::TcpPeriodicDC::m_lamuda", DoubleValue (lamuda));
+		Config::SetDefault ("ns3::TcpPeriodicDC::Bd", DoubleValue (Bd));
+		Config::SetDefault ("ns3::TcpPeriodicDC::Rc", DoubleValue (12*Rc/100.0));
+		Config::SetDefault ("ns3::TcpPeriodicDC::cycle", DoubleValue (cycle));
+		//Config::SetDefault ("ns3::TcpPeriodicDC::m_lamuda", DoubleValue (6.0));//  /0.02
+		Config::SetDefault ("ns3::TcpPeriodicDC::assitPra", DoubleValue (10));
+		Config::SetDefault ("ns3::TcpSocketBase::Pdcc", BooleanValue (true));
+		//Config::SetDefault ("ns3::PointToPointNetDevice::isRandomChange", BooleanValue (false));
+		break;
+	case 2:
+		TCP_PROTOCOL="ns3::TcpCopa";
+		fileNameRoot+="Copa/";
+		LogComponentEnable ("TcpCopa", LOG_LEVEL_INFO);
+		Config::SetDefault ("ns3::TcpCopa::iscopaModify", BooleanValue (false));
+		break;
+	case 3:
+		TCP_PROTOCOL="ns3::TcpBbr";
+		fileNameRoot+="BBR/";
+		LogComponentEnable ("TcpBbr", LOG_LEVEL_INFO);
+		break;
+	case 4:
+		TCP_PROTOCOL="ns3::TcpCopa";
+		fileNameRoot+="ADC/";
+		LogComponentEnable ("TcpCopa", LOG_LEVEL_INFO);
+		Config::SetDefault ("ns3::TcpCopa::iscopaModify", BooleanValue (true));
+		break;
+	case 5:
+		TCP_PROTOCOL="ns3::TcpCubic";
+		fileNameRoot+="Cubic/";
+		LogComponentEnable ("TcpCubic", LOG_INFO);
+		break;
+	case 6:
+		TCP_PROTOCOL="ns3::TcpNewReno";
+		fileNameRoot+="NewReno/";
+		//LogComponentEnable ("TcpNewReno", LOG_INFO);
+		break;
+		case 7:  //ICC-G (Goertzel, no FFTW)
+			TCP_PROTOCOL="ns3::TcpIccG";
+			fileNameRoot+="ICC-G/";
+			LogComponentEnable ("TcpIccG", LOG_LEVEL_INFO);
+			Config::SetDefault ("ns3::TcpIccG::m_lamuda", DoubleValue (lamuda));
+			Config::SetDefault ("ns3::TcpIccG::Bd", DoubleValue (Bd));
+			Config::SetDefault ("ns3::TcpIccG::Rc", DoubleValue (12*Rc/100.0));
+			Config::SetDefault ("ns3::TcpIccG::cycle", DoubleValue (cycle));
+			Config::SetDefault ("ns3::TcpIccG::assitPra", DoubleValue (10));
+			break;
+	default:
+		TCP_PROTOCOL="ns3::TcpPeriodicDC";
+		fileNameRoot+="PDCC/";
+		LogComponentEnable ("TcpPeriodicDC", LOG_LEVEL_INFO); 
+		Config::SetDefault ("ns3::TcpPeriodicDC::m_lamuda", DoubleValue (lamuda));
+		Config::SetDefault ("ns3::TcpPeriodicDC::Bd", DoubleValue (Bd));
+		Config::SetDefault ("ns3::TcpPeriodicDC::Rc", DoubleValue (12*Rc/100.0));
+		Config::SetDefault ("ns3::TcpPeriodicDC::cycle", DoubleValue (cycle));
+		//Config::SetDefault ("ns3::TcpPeriodicDC::m_lamuda", DoubleValue (6.0));//  /0.02
+		Config::SetDefault ("ns3::TcpPeriodicDC::assitPra", DoubleValue (10));
+		Config::SetDefault ("ns3::TcpSocketBase::Pdcc", BooleanValue (true));
+		// Config::SetDefault ("ns3::PointToPointNetDevice::isRandomChange", BooleanValue (false));
   }
   
   
@@ -290,18 +289,11 @@ main (int argc, char *argv[])
   //RB.SetDeviceAttribute ("isLossChange", BooleanValue(rand_loss));
   //RB.SetDeviceAttribute ("RandomInterval", TimeValue (Seconds (5)));
   RB.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (delayRB*1000)));
-  RB.SetQueue("ns3::DropTailQueue", "MaxPackets", UintegerValue(queuesize));
-
-  /*------Danamic links with modification in p-t-p channel-----------*/
-
-  RB.SetChannelAttribute ("isDelayChange", BooleanValue(rand_delay));
-  RB.SetChannelAttribute ("islossChange", BooleanValue(rand_loss));
+  // RB.SetChannelAttribute ("isDelayChange", BooleanValue(rand_delay));
+  // RB.SetChannelAttribute ("islossChange", BooleanValue(rand_loss));
   RB.SetChannelAttribute ("isBwChange", BooleanValue(rand_BW));
-  RB.SetChannelAttribute ("poissonDelay", BooleanValue(poisson_delay));
   RB.SetChannelAttribute ("RandomInterval", TimeValue (Seconds (rand_interval)));
-
-  /*----------------------------------------------------------------*/
-
+  RB.SetQueue("ns3::DropTailQueue", "MaxPackets", UintegerValue(queuesize));
   devRB = RB.Install(R,B);
   
   /* Ptr<RateErrorModel> em = CreateObject<RateErrorModel> ();
@@ -388,7 +380,7 @@ main (int argc, char *argv[])
 	  bulkSendApp = bulkSendAppObj -> GetObject<Application>();
 
 
-	  bulkSendApp->SetStartTime(Seconds(0.001*i));
+	  bulkSendApp->SetStartTime(Seconds(10*int(i/2)));
 	  bulkSendApp->SetStopTime(Seconds(runtime));
 
 	  A1->AddApplication(bulkSendApp);
@@ -400,7 +392,7 @@ main (int argc, char *argv[])
 	  bulkSendAppObj = factory.Create();
 	  bulkSendApp = bulkSendAppObj -> GetObject<Application>();
 
-	  bulkSendApp->SetStartTime(Seconds(0.001*i));
+	  bulkSendApp->SetStartTime(Seconds(10*int(i/2)));
 	  bulkSendApp->SetStopTime(Seconds(runtime));
 
 	  A2->AddApplication(bulkSendApp);
@@ -448,3 +440,4 @@ main (int argc, char *argv[])
 
   return 0;
 }
+

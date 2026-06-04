@@ -116,6 +116,7 @@ set(source_files
     model/tcp-socket.cc
     model/tcp-tx-buffer.cc
     model/tcp-tx-item.cc
+    model/tcp-iccG.cc
     model/tcp-vegas.cc
     model/tcp-veno.cc
     model/tcp-westwood-plus.cc
@@ -240,6 +241,7 @@ set(header_files
     model/tcp-socket.h
     model/tcp-tx-buffer.h
     model/tcp-tx-item.h
+    model/tcp-iccG.h
     model/tcp-vegas.h
     model/tcp-veno.h
     model/tcp-westwood-plus.h

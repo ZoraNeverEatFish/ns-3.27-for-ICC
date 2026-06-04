@@ -135,7 +135,8 @@ main (int argc, char *argv[])
   double delay=10;
   double cycle=1;
   
-  int CC_mode=1;// 0-newReno 1-PDCC 2-Copa 3-BBR 4-Cubic 5-NewReno(dup) 6-ICC-G
+  int CC_mode=1;// 0-newReno 1-PDCC 2-Copa 3-BBR
+  std::string ccAlgo="icc";// icc -> TcpPeriodicDC (FFTW) ; iccG -> TcpIccG (Goertzel)
 
 
 
@@ -146,6 +147,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("delayRB", "Delay on the R--B link, in ms", delay);
   cmd.AddValue ("cycle", "T for PDCC, in s", cycle);
   cmd.AddValue ("CC_mode", "CC Mode", CC_mode);
+  cmd.AddValue ("cc", "ICC variant: icc (FFTW) | iccG (Goertzel)", ccAlgo);
   cmd.AddValue ("queuesize", "queue size at R", queuesize);
   cmd.AddValue ("tcpSegmentSize", "TCP segment size", tcpSegmentSize);
   cmd.AddValue ("iscopaModify", "copa Modify", iscopaModify);
@@ -165,76 +167,63 @@ main (int argc, char *argv[])
   cmd.Parse (argc, argv);
 
   //delta=1.0/delta;
-  
+
+  // --cc=iccG selects the Goertzel-based ICC variant (TcpIccG).
+  // --cc=icc keeps the original FFTW-based ICC (TcpPeriodicDC, CC_mode=1).
+  if (ccAlgo == "iccG") CC_mode = 6;
+
   std::string TCP_PROTOCOL;
   switch(CC_mode) //chose tested scheme
   {
-    case 0:
-      TCP_PROTOCOL="ns3::TcpNewReno";
-      fileNameRoot+="NewReno/";
-		break;
-    case 1:
-      TCP_PROTOCOL="ns3::TcpPeriodicDC";
-      fileNameRoot+="PDCC/";
-      LogComponentEnable ("TcpPeriodicDC", LOG_LEVEL_INFO); 
-      Config::SetDefault ("ns3::TcpPeriodicDC::m_lamuda", DoubleValue (lamuda));
-      Config::SetDefault ("ns3::TcpPeriodicDC::Bd", DoubleValue (Bd));
-      Config::SetDefault ("ns3::TcpPeriodicDC::Rc", DoubleValue (12*Rc/100.0));
-      Config::SetDefault ("ns3::TcpPeriodicDC::cycle", DoubleValue (cycle));
-      //Config::SetDefault ("ns3::TcpPeriodicDC::m_lamuda", DoubleValue (6.0));//  /0.02
-      Config::SetDefault ("ns3::TcpPeriodicDC::assitPra", DoubleValue (10));
-      Config::SetDefault ("ns3::TcpSocketBase::Pdcc", BooleanValue (true));
-      //Config::SetDefault ("ns3::PointToPointNetDevice::isRandomChange", BooleanValue (false));
-      break;
-    case 2:
-      TCP_PROTOCOL="ns3::TcpCopa";
-      fileNameRoot+="Copa/";
-      LogComponentEnable ("TcpCopa", LOG_LEVEL_INFO);
-      Config::SetDefault ("ns3::TcpCopa::iscopaModify", BooleanValue (false));
-      break;
-    case 3:
-      TCP_PROTOCOL="ns3::TcpBbr";
-      fileNameRoot+="BBR/";
-      LogComponentEnable ("TcpBbr", LOG_LEVEL_INFO);
-      break;
-    case 4:
-      TCP_PROTOCOL="ns3::TcpCopa";
-      fileNameRoot+="ADC/";
-      LogComponentEnable ("TcpCopa", LOG_LEVEL_INFO);
-      Config::SetDefault ("ns3::TcpCopa::iscopaModify", BooleanValue (true));
-      break;
-    case 5:
-      TCP_PROTOCOL="ns3::TcpCubic";
-      fileNameRoot+="Cubic/";
-      LogComponentEnable ("TcpCubic", LOG_INFO);
-      break;
-    case 6:
-      TCP_PROTOCOL="ns3::TcpNewReno";
-      fileNameRoot+="NewReno/";
-      //LogComponentEnable ("TcpNewReno", LOG_INFO);
-      break;
-    case 7:  //ICC-G (Goertzel, no FFTW)
-      TCP_PROTOCOL="ns3::TcpIccG";
-      fileNameRoot+="ICC-G/";
-      LogComponentEnable ("TcpIccG", LOG_LEVEL_INFO);
-      Config::SetDefault ("ns3::TcpIccG::m_lamuda", DoubleValue (lamuda));
-      Config::SetDefault ("ns3::TcpIccG::Bd", DoubleValue (Bd));
-      Config::SetDefault ("ns3::TcpIccG::Rc", DoubleValue (12*Rc/100.0));
-      Config::SetDefault ("ns3::TcpIccG::cycle", DoubleValue (cycle));
-      Config::SetDefault ("ns3::TcpIccG::assitPra", DoubleValue (10));
-      break;
-    default:
-      TCP_PROTOCOL="ns3::TcpPeriodicDC";
-      fileNameRoot+="PDCC/";
-      LogComponentEnable ("TcpPeriodicDC", LOG_LEVEL_INFO); 
-      Config::SetDefault ("ns3::TcpPeriodicDC::m_lamuda", DoubleValue (lamuda));
-      Config::SetDefault ("ns3::TcpPeriodicDC::Bd", DoubleValue (Bd));
-      Config::SetDefault ("ns3::TcpPeriodicDC::Rc", DoubleValue (12*Rc/100.0));
-      Config::SetDefault ("ns3::TcpPeriodicDC::cycle", DoubleValue (cycle));
-      //Config::SetDefault ("ns3::TcpPeriodicDC::m_lamuda", DoubleValue (6.0));//  /0.02
-      Config::SetDefault ("ns3::TcpPeriodicDC::assitPra", DoubleValue (10));
-      Config::SetDefault ("ns3::TcpSocketBase::Pdcc", BooleanValue (true));
-      // Config::SetDefault ("ns3::PointToPointNetDevice::isRandomChange", BooleanValue (false));
+  case 0:
+    TCP_PROTOCOL="ns3::TcpNewReno";
+    fileNameRoot+="NewReno/";
+    break;
+  case 1:  //ICC
+    TCP_PROTOCOL="ns3::TcpPeriodicDC";
+    fileNameRoot+="ICC/";
+    LogComponentEnable ("TcpPeriodicDC", LOG_LEVEL_INFO); 
+    Config::SetDefault ("ns3::TcpPeriodicDC::Rc", DoubleValue (Rc));
+    Config::SetDefault ("ns3::TcpPeriodicDC::Bd", DoubleValue (Bd));
+    //Config::SetDefault ("ns3::TcpSocketBase::Pdcc", BooleanValue (1));
+    break;
+  case 2:  //Copa
+    TCP_PROTOCOL="ns3::TcpCopa";
+    fileNameRoot+="Copa/";
+    LogComponentEnable ("TcpCopa", LOG_LEVEL_INFO);
+    Config::SetDefault ("ns3::TcpCopa::iscopaModify", BooleanValue (false));
+    Config::SetDefault ("ns3::TcpCopa::enableComp", BooleanValue (1));
+    Config::SetDefault ("ns3::TcpCopa::cpVersion", UintegerValue (0));
+    break;
+  case 3:
+    TCP_PROTOCOL="ns3::TcpBbr";
+    fileNameRoot+="BBR/";
+    LogComponentEnable ("TcpBbr", LOG_LEVEL_INFO);
+    break;
+  case 4:
+    TCP_PROTOCOL="ns3::TcpCubic";
+    fileNameRoot+="Cubic/";
+    LogComponentEnable ("TcpCubic", LOG_INFO);
+    break;
+  case 5:
+    TCP_PROTOCOL="ns3::TcpNewReno";
+    fileNameRoot+="NewReno/";
+    //LogComponentEnable ("TcpNewReno", LOG_INFO);
+    break;
+  case 6:  //ICC-G (Goertzel)
+    TCP_PROTOCOL="ns3::TcpIccG";
+    fileNameRoot+="ICC-G/";
+    LogComponentEnable ("TcpIccG", LOG_LEVEL_INFO);
+    Config::SetDefault ("ns3::TcpIccG::Rc", DoubleValue (Rc));
+    Config::SetDefault ("ns3::TcpIccG::Bd", DoubleValue (Bd));
+    break;
+  default:
+    TCP_PROTOCOL="ns3::TcpPeriodicDC";
+    fileNameRoot+="ICC/";
+    LogComponentEnable ("TcpPeriodicDC", LOG_LEVEL_INFO); 
+    Config::SetDefault ("ns3::TcpPeriodicDC::Rc", DoubleValue (Rc));
+    Config::SetDefault ("ns3::TcpPeriodicDC::Bd", DoubleValue (Bd));
+    //Config::SetDefault ("ns3::TcpSocketBase::Pdcc", BooleanValue (1));
   }
   
   
